@@ -1,0 +1,41 @@
+\setcounter{tocdepth}{2}
+
+\renewcommand{\figurename}{Fig.~}
+\renewcommand{\tablename}{Table~}
+\renewcommand{\bibname}{参考文献}
+
+\newcommand{\figref}[1]{\figurename\ref{#1}}
+\newcommand{\tabref}[1]{\tablename\ref{#1}}
+\newcommand{\eqnref}[1]{Eq.~(\ref{#1})}
+\newcommand{\chapref}[1]{第\ref{#1}章}
+\newcommand{\secref}[1]{\ref{#1}節}
+
+% 「、」「。」を「，」「．」に置換
+\directlua{
+  luatexbase.add_to_callback("process_input_buffer", function(s)
+    return (s:gsub("、", "，"):gsub("。", "．"))
+  end, "thesis.punct")
+}
+
+\def\thesis#1{\gdef\@thesis{#1}}
+\def\teacher#1{\gdef\@teacher{#1}}
+\def\organization#1{\gdef\@organization{#1}}
+
+\renewcommand{\maketitle}{%
+  \thispagestyle{empty}
+  \begin{center}
+    \vspace*{2cm}
+    {\LARGE \@thesis}\\
+    \vspace{2cm}
+    {\LARGE\bfseries \@title}\\
+    \vspace{5cm}
+    {\Large
+      \@date\hspace{0.5\zw}提出\\
+      \vspace{1cm}
+      指導教員\hspace{0.5\zw}\@teacher\\
+      \vspace{1cm}
+      \@organization\\}
+    {\LARGE \@author}
+  \end{center}
+  \clearpage
+}

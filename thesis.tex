@@ -1,0 +1,44 @@
+\documentclass[a4paper, 12pt, openany, oneside]{ltjsbook}
+\usepackage[haranoaji]{luatexja-preset}
+\usepackage[hang,small,bf]{caption}
+\usepackage[subrefformat=parens]{subcaption}
+\captionsetup{justification=centering}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage{thesis}
+
+\setlength{\textwidth}{\fullwidth}
+\setlength{\evensidemargin}{\oddsidemargin}
+\renewcommand{\baselinestretch}{1.2}
+
+\thesis{卒 業 論 文}
+\title{論文タイトル\\\large English Title}
+\date{\today}
+\teacher{〇〇 〇〇 教授}
+\organization{〇〇大学 〇〇学部 〇〇学科}
+\author{学籍番号 氏名}
+
+\begin{document}
+
+\frontmatter
+\maketitle
+\include{frontmatter/abstract}
+\tableofcontents
+\listoffigures
+\listoftables
+
+\mainmatter
+\include{chapters/introduction}
+% \include{chapters/<章ファイル名>}
+
+\backmatter
+\bibliographystyle{junsrt}
+\bibliography{references}
+\include{backmatter/appendix}
+\include{backmatter/acknowledgement}
+
+\end{document}
