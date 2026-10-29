@@ -7,6 +7,7 @@
 \usepackage{enumitem}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{booktabs}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 \usepackage{thesis}
@@ -15,12 +16,16 @@
 \setlength{\evensidemargin}{\oddsidemargin}
 \renewcommand{\baselinestretch}{1.2}
 
-\thesis{卒 業 論 文}
-\title{論文タイトル\\\large English Title}
-\date{\today}
-\teacher{〇〇 〇〇 教授}
-\organization{〇〇大学 〇〇学部 〇〇学科}
-\author{学籍番号 氏名}
+% 執筆中の仮置き（提出前にすべて除去する）
+\newcommand{\todo}[1]{\textbf{【TODO: #1】}}
+\newcommand{\figplaceholder}[1]{\fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering #1}}}
+
+\thesis{修 士 論 文}
+\title{視覚情報に基づく自律走行モビリティの周回時間に対する\\経路・速度計画および追従制御の寄与の評価\\\large Evaluation of the Contributions of Path Planning, Velocity Planning, and Path Following to the Lap Time of a Vision-based Autonomous Mobility}
+\date{2027年2月\todo{日付}}
+\teacher{林原 靖男 教授}
+\organization{千葉工業大学 先進工学研究科 未来ロボティクス専攻}
+\author{\todo{学籍番号} 山下 響}
 
 \begin{document}
 
@@ -33,7 +38,11 @@
 
 \mainmatter
 \include{chapters/introduction}
-% \include{chapters/<章ファイル名>}
+\include{chapters/system}
+\include{chapters/method}
+\include{chapters/field_test}
+\include{chapters/contribution}
+\include{chapters/conclusion}
 
 \backmatter
 \bibliographystyle{junsrt}

@@ -1,15 +1,23 @@
 \chapter*{概要}
 \thispagestyle{empty}
 
-本文。
+\begin{center}
+{\large 視覚情報に基づく自律走行モビリティの周回時間に対する\\経路・速度計画および追従制御の寄与の評価}
+\end{center}
+
+近年，人や荷物を運ぶ小型モビリティの自律走行に関する研究・開発が進んでいる．高精度地図やGNSSが使えない構内や屋内外の境界で運用するためには，カメラと内界センサだけで走行できることが求められる．AI-Formulaは，LiDARと自作の事前地図の使用を禁止し，GNSSを安全機能以外に使えない条件で，信号・交差点・障害物を含むコースを3周する時間を競う小型モビリティの競技会である．本研究では，この競技に向けて開発した，カメラ画像から目標経路を生成し，曲率に基づく速度計画と経路追従制御によって走行する自律走行システムを対象に，周回時間がどの要素によって，どの速度域で，どれだけ決まっているかを評価する．まず，実際に走行した軌跡に車両の加減速と横加速度の制約だけを与えて計算した基準時間を定義し，実測の周回時間との差を，経路生成，速度計画，経路追従，停止・障害物対応に起因する増加分に分けて求める方法を示す．次に，実車の走行記録から同定した車両応答と経路生成の誤差を組み込んだ閉ループシミュレーションを構築し，記録した走行を再現できることを確かめたうえで，各要素を除いた場合の周回時間と完走の可否を比較する．実車走行では，並進速度4\,m/sで赤・青両コースの3周走行が成立し，5\,m/sでは経路生成の誤差ではなく，自己位置推定の入力欠落，追従制御の舵角振動，車体の応答が周回の失敗を決めていることを示す．これらの結果から，速度域ごとに周回時間を律速する要素が移り変わることを，1台の実車で定量的に示す．
 
 \vspace{2\zh}
-キーワード: 
+キーワード: 自律走行モビリティ，AI-Formula，周回時間，速度計画，経路追従，閉ループシミュレーション
 
 \chapter*{Abstract}
 \thispagestyle{empty}
 
-Text.
+\begin{center}
+{\large Evaluation of the Contributions of Path Planning, Velocity Planning,\\and Path Following to the Lap Time of a Vision-based Autonomous Mobility}
+\end{center}
+
+Small autonomous mobilities that carry people and goods are expected to operate in places where high-definition maps and GNSS are not available, which requires driving with a camera and proprioceptive sensors only. AI-Formula is a race-type competition for small mobilities in which LiDAR and self-made prior maps are prohibited, GNSS is allowed only for safety functions, and the total time of three laps on a course with traffic signals, intersections, and obstacles is competed. This study evaluates an autonomous driving system developed for this competition, which generates a target path from camera images and drives with curvature-based velocity planning and path-following control, in terms of which component determines the lap time, in which speed range, and by how much. First, a reference time is defined by applying only the acceleration and lateral acceleration limits of the vehicle to the trajectory actually driven, and the difference between the measured lap time and the reference time is decomposed into the increments attributable to path generation, velocity planning, path following, and stopping or obstacle handling. Second, a closed-loop simulation incorporating the vehicle response and the path-generation error identified from the driving records is constructed, its ability to reproduce the recorded driving is confirmed, and the lap time and completion with each component removed are compared. In field tests, three-lap driving on both the red and blue courses was achieved at 4\,m/s, whereas at 5\,m/s the failures were determined not by the path-generation error but by the loss of localization inputs, steering oscillation of the path-following controller, and the vehicle response. These results quantitatively show, on a single vehicle, that the component limiting the lap time shifts with the speed range.
 
 \vspace{2\zh}
-Keywords: 
+Keywords: Autonomous mobility, AI-Formula, Lap time, Velocity planning, Path following, Closed-loop simulation

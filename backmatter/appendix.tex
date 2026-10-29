@@ -1,2 +1,47 @@
 \chapter*{付録}
 \addcontentsline{toc}{chapter}{付録}
+
+\section*{A. 2024年度AI-Formulaレースの結果}
+2025年3月に開催された2024年度AI-Formulaレースに千葉工業大学チームとして参加し，首位を獲得した．記録をTable~\ref{tab:fy2024}に示す\cite{fujino2026}．
+
+\begin{table}[H]
+  \centering
+  \caption{Results from the FY2024 AI-Formula race.}
+  \label{tab:fy2024}
+  \begin{tabular}{ll}
+    \toprule
+    項目 & タイム \\
+    \midrule
+    ベストタイム（3周） & 1分59.471秒 \\
+    ベストラップ & 39.481秒 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section*{B. 主要なパラメータ}
+本システムで用いた主要なパラメータをTable~\ref{tab:params}に示す．
+
+\begin{table}[H]
+  \centering
+  \caption{Main parameters of the system.}
+  \label{tab:params}
+  \begin{tabular}{lll}
+    \toprule
+    項目 & 値 & 要素 \\
+    \midrule
+    上限速度 & 4.0\,m/s & 共通 \\
+    縦加速度の上限 & 3.0\,m/s$^2$ & 速度計画 \\
+    横加速度の上限 & 3.0\,m/s$^2$ & 速度計画 \\
+    停止減速度 / 上限 & 1.5 / 4.0\,m/s$^2$ & 速度計画 \\
+    舵角の制限 & $\pm 15^\circ$ & 経路追従 \\
+    速度の先読み時間 & 0.3\,s & 経路追従 \\
+    平滑化の時間窓 / 当てはめ範囲 & 0.15\,s / 12\,m & 経路の平滑化 \\
+    合流時間 / 合流距離 & 1.0\,s / 4〜15\,m & 局所経路計画 \\
+    回避経路の長さ & 15\,m & 局所経路計画 \\
+    信号の停止点 & コーンの3.3\,m手前 & 信号停止 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section*{C. 実車走行の記録項目}
+実車走行で記録したトピックの一覧を示す\todo{required\_topics表を作成}．

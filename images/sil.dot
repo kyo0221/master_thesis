@@ -1,0 +1,4 @@
+digraph G { rankdir=LR; node [shape=box, style="rounded,filled", fontname="Noto Sans CJK JP", fontsize=11]; edge [fontname="Noto Sans CJK JP", fontsize=9];
+subgraph cluster_impl { label="Implemented software (unchanged)"; style=dashed; fontname="Noto Sans CJK JP"; sm [label="Path smoothing", fillcolor="#f2f2f2"]; lp [label="Frenet\nlocal planner", fillcolor="#f2f2f2"]; sp [label="Velocity planning", fillcolor="#f2f2f2"]; tr [label="Path following", fillcolor="#f2f2f2"]; }
+subgraph cluster_model { label="Models identified from driving records"; style=dashed; fontname="Noto Sans CJK JP"; pg [label="Path generation model\n(lane center + noise, FOV)", fillcolor="#fde9d9"]; det [label="Detection model\n(range, error)", fillcolor="#fde9d9"]; veh [label="Vehicle model\n(delay, lag, limits)", fillcolor="#fde9d9"]; }
+pg -> sm -> lp -> sp -> tr -> veh; det -> lp; det -> sp; veh -> pg [label="pose"]; veh -> lp [label="pose"]; veh -> tr [label="pose, velocity"]; }

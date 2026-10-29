@@ -1,0 +1,121 @@
+\chapter{要素ごとの寄与の評価}
+\label{chap:contribution}
+本章では，\ref{sec:sil}節の閉ループシミュレーションを用いて，各要素を除いた場合の周回時間と完走の可否を比較し，要素ごとの寄与を求める．あわせて，並進速度の段階ごとに律速となる要素を示す．本章の数値のうち，統一した条件で再計算していないものは予備的な結果として示す\todo{統一ハーネスで全条件を再計算し，表と図を更新}．
+
+\section{シミュレーションの妥当性}
+\label{sec:sil_validity}
+記録した目標経路と自己位置をシミュレーションに与えたところ，局所経路計画の出力は記録と0.03〜0.05\,mの範囲で一致した．Fig.~\ref{fig:sil_replay}に，実車で生じた隣接車線への移動（4章のR3）の閉ループ再現を示す．記録した車体のヨーの外乱（$-1.6^\circ$相当）を与えると横変位$-1.1$\,m（実車$-1.4$\,m）として再現され，外乱を与えない場合は$\pm 0.3$\,mに収まった．信号停止の行き過ぎ（4章，実車0.81\,m）は0.73\,mで再現された（Fig.~\ref{fig:run1012_stop}）．これらから，閉ループシミュレーションは局所経路計画以降の挙動と，車両応答に起因する失敗を再現できると判断した．経路生成そのものは雑音モデルで置き換えているため，経路生成の学習や重みの違いによる差はシミュレーションでは評価せず，記録した画像に対する開ループの指標で示す．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/sil_lanechange_replay.png}
+  \caption{Closed-loop reproduction of the lane change in R3 with the implemented local planner and MPC: recorded vehicle (black), simulation without disturbance, and simulation with the recorded yaw disturbance.}
+  \label{fig:sil_replay}
+\end{figure}
+
+複数条件での周回時間の順位相関は\todo{4章の走行条件に対応する条件で算出}．
+
+\section{要素ごとの周回時間}
+\label{sec:ablation}
+Table~\ref{tab:ablation}に，各要素を除いた条件での周回時間と完走の可否を示す．コースは赤と青，上限速度は4，5，5.5，7\,m/s，経路生成の雑音は実測モデルと理想の2条件，各3シードとする\todo{統一条件で計算}．
+
+\begin{table}[H]
+  \centering
+  \caption{Lap time and completion with each component removed (closed-loop simulation).}
+  \label{tab:ablation}
+  \small
+  \begin{tabular}{lp{5.5cm}rrrl}
+    \toprule
+    条件 & 除いた要素 & 周回時間 [s] & 完走 & 最大横偏差 [m] & 備考 \\
+    \midrule
+    基準 & なし & \todo{} & \todo{} & \todo{} & \\
+    A1 & 曲率に基づく速度計画（注視距離による減速に置換） & \todo{} & \todo{} & \todo{} & \\
+    A2 & 停止減速度の分離 & \todo{} & \todo{} & \todo{} & \\
+    A3 & MPC（Pure Pursuit法に置換） & \todo{} & \todo{} & \todo{} & \\
+    A4 & 3次多項式の平滑化（2次に置換） & \todo{} & \todo{} & \todo{} & \\
+    A5 & 速度に応じた合流距離（固定15\,mに置換） & \todo{} & \todo{} & \todo{} & \\
+    A6 & 回避側の保持 & \todo{} & \todo{} & \todo{} & \\
+    A7 & 理想的な経路生成 & \todo{} & \todo{} & \todo{} & 端点 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+これまでに個別の条件で得られている予備的な結果を以下に述べる．
+
+\subsection{経路追従制御}
+Fig.~\ref{fig:sil_controller}に，Pure Pursuit法とMPCの完走率と最大横偏差を上限速度に対して示す．上限速度を4\,m/sとした青コースでも，Pure Pursuit法は理想的な経路生成で横偏差が1\,mを超え，コース外に出る例があった．MPCは5.5\,m/sまで横偏差0.78\,m以下で12本すべて完走し，6.0\,m/sでは操舵の制限に張り付いて4〜6本で失敗した．MPCの5.5\,m/sでの1周の時間は48.7\,sであった．失敗の機構は，カーブ入口で舵角が$15^\circ$の制限に達し，減速がカーブ進入後になることであった．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/sil_controller.png}
+  \caption{Comparison of Pure Pursuit and MPC in the closed-loop simulation: completion rate (top) and maximum lateral deviation (bottom) versus the velocity limit (left: red course, right: blue course, 4 seeds).}
+  \label{fig:sil_controller}
+\end{figure}
+
+\subsection{局所経路計画の合流距離}
+Fig.~\ref{fig:sil_merge}に，合流距離の設定ごとの完走率と最大横偏差を上限速度に対して示す．合流距離を固定15\,mとした場合，局所経路は毎周期，計測した自己位置から引き直されるため追従制御の補正が打ち消され，最大横偏差は1.2〜1.85\,mであった．合流距離を速度に比例させ，横加速度の上限で下限を与えた場合，最大横偏差は0.18〜0.58\,mに減少した．障害物回避後の復帰では，横加速度の上限がないと7\,m/sで横加速度が6〜8\,m/s$^2$に達した．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/sil_merge_sweep.png}
+  \caption{Completion rate (top) and maximum lateral deviation (bottom) versus the velocity limit for different merge-length settings of the local planner (left: red course, right: blue course).}
+  \label{fig:sil_merge}
+\end{figure}
+
+\subsection{停止減速度の分離}
+Fig.~\ref{fig:sil_stop}に，信号停止における停止線からの行き過ぎを，速度計画の設定ごとに示す．停止専用の減速度を分けない場合の行き過ぎは，4\,m/sで$+0.69$〜$0.89$\,mであった．分離後は$+0.07$\,mに減少した．5\,m/sでは$+0.48$〜$0.89$\,mと改善が小さく，5.5\,m/s以上では停止点が初めて発行される距離（約6\,m）が制動距離を下回るため，減速度の設定では停止できなかった．直線上の障害物に対する停止は，分離前は6本中5本で通過してしまったのに対し，分離後は6本すべてで手前に停止した．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/sil_stop_design.png}
+  \caption{Overshoot of the stop position for different velocity-planning settings at 4 to 6\,m/s (closed-loop simulation with the identified vehicle model).}
+  \label{fig:sil_stop}
+\end{figure}
+
+\subsection{経路の平滑化}
+Fig.~\ref{fig:sil_branch}に，青コースの交差点カーブにおける速度の時系列を，2次と3次の平滑化で比較して示す．2次多項式の平滑化では，交差点の急カーブ（半径約4.6〜4.9\,m）の曲率を経路の先端まで過小に評価し，7\,m/sで横加速度が摩擦限界に張り付いた．3次多項式では曲率の評価が実際に近づき，分岐カーブの頂点速度が上限5\,m/sの条件で3.0〜3.6\,m/s（2次では5.1〜5.3\,m/s）に収まった．一方で，直線区間では遠方の雑音を拾って誤った減速が生じやすく，1周の時間の差は上限速度3.5〜5.0\,m/sの範囲で小さかった（42〜48\,s，雑音による差$\pm 2$\,s）．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/sil_branch_speed.png}
+  \caption{Velocity around the intersection curve of the blue course at 7\,m/s with ideal (left) and pessimistic (right) path generation: velocity limit (dashed), planned velocity, and measured velocity.}
+  \label{fig:sil_branch}
+\end{figure}
+
+\subsection{経路生成の可視距離}
+Fig.~\ref{fig:sil_horizon}に，経路生成の出力と平滑化後の経路が持つ曲率を，実際に走行した曲率に対する比として前方距離ごとに示す．7\,m/sで交差点の急カーブに進入するためには，制動と遅れを含めて9〜10.5\,mの先読みが必要であるのに対し，経路生成の出力はカーブで6\,m，直線で9\,m程度までしか得られない．このため，速度計画はカーブの曲率を頂点の手前まで知ることができず，上限速度を7\,m/sにした条件では経路追従制御や速度計画の設定を変えても横加速度の超過を防げなかった．経路生成の可視距離は，7\,m/s帯では速度計画と追従制御に先立つ律速要因である．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/sil_curvature_horizon.png}
+  \caption{Curvature of the generated and smoothed paths relative to the driven curvature at 2.5, 4, and 6\,m ahead (left), frame-to-frame jitter at 5\,m ahead (center), and the lateral acceleration in a sharp curve versus the curvature ratio (right).}
+  \label{fig:sil_horizon}
+\end{figure}
+
+\section{速度段階と律速要因}
+\label{sec:bottleneck}
+4章の実車走行と本章のシミュレーションから，並進速度の段階ごとに周回時間と完走を律速する要素をTable~\ref{tab:bottleneck}にまとめる．4\,m/sでは完走が成立し，周回時間の増加分は信号停止の遅れと速度計画の保守性が主である．5\,m/sでは，実車では自己位置推定の入力欠落と追従制御の舵角振動，車体の応答が完走を妨げ，シミュレーションでは経路追従制御をMPCとし合流距離を速度に応じて変えれば完走できる．5.5\,m/sはシミュレーションでの完走の上限である．7\,m/sでは経路生成の可視距離が不足し，速度計画と追従制御の改良では完走できない．
+
+\begin{table}[H]
+  \centering
+  \caption{Limiting factors of the lap time and completion by speed range.}
+  \label{tab:bottleneck}
+  \begin{tabular}{lp{6cm}p{5cm}}
+    \toprule
+    速度 & 実車 & 閉ループシミュレーション \\
+    \midrule
+    4\,m/s & 完走．信号停止の遅れ，速度計画の保守性 & 完走 \\
+    5\,m/s & 自己位置推定の入力欠落，舵角振動，車体の応答 & MPCと合流距離の変更で完走 \\
+    5.5\,m/s & 車体の応答（隣接車線への移動） & 完走の上限 \\
+    7\,m/s & 未実施（従動輪のシミーにより6\,m/s超は走行しない） & 経路生成の可視距離の不足 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{考察}
+\label{sec:discussion}
+本システムで導入した要素のうち，完走に対して最も寄与が大きかったのは経路追従制御のMPCと，局所経路計画の合流距離を速度に応じて変える変更である．これらがなければ，理想的な経路生成でも4\,m/sで経路から外れる．曲率に基づく速度計画と停止減速度の分離は，周回時間よりも停止位置の精度と障害物に対する停止の成否に寄与した．経路の平滑化の多項式の次数は，交差点の急カーブでの横加速度の超過を防ぐ一方で，周回時間への寄与は小さかった．
+
+一方で，実車で5\,m/sの完走を妨げたのは，シミュレーションでは扱っていない自己位置推定の入力欠落と車体の応答であった．これらはシミュレーションの車両モデルと自己位置モデルが前提としている条件が実車で満たされなかったことを意味する．要素の寄与をシミュレーションで比較する場合，比較の前提となる状態推定と車体の応答が実車で成立している速度域を明示する必要がある．
+
+経路生成の誤差は，4〜5.5\,m/sの範囲では周回時間と完走を律速していないが，7\,m/sでは可視距離の不足として律速要因になる．経路生成の改良は，7\,m/s帯を目指す段階で初めて周回時間に効く．

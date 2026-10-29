@@ -1,0 +1,226 @@
+\chapter{実車走行の結果}
+\label{chap:field}
+本章では，2026年10月12日と10月27日に実施した実車走行の結果を述べる．10月12日は車両応答の同定と4\,m/sでの基準走行，10月27日は4〜5.5\,m/sでの周回走行を行った．
+
+\section{走行条件}
+\label{sec:field_cond}
+走行はAI-Formulaのコースで行った．1周の長さは約212\,m，車線幅は4\,mである．10月12日は赤コースを4\,m/sで3周する自律走行を1本と，手動操縦による同定走行を6本（4〜7\,m/s）行った．10月27日は，赤コースと青コースで4，5，5.5\,m/sの自律走行を計17本行った．経路追従制御は，10月12日はMPC，10月27日は序盤の2本がPure Pursuit法，以降はMPCである．経路生成の重みは10月12日が9月27日版，10月27日が\todo{重みの版を記録から確定}である．信号パネルは10月12日は消灯，10月27日は\todo{点灯の有無を確認}であった．
+
+Table~\ref{tab:runs}に10月27日の走行の一覧を示す．自律走行の時間は並進速度が3.5\,m/sを超えていた区間の合計，横偏差は車線中心に対する横位置の絶対値の95パーセント点，舵角の変化率は舵角の指令値の時間変化の平均，IMU欠落率は慣性航法装置の出力が0.2\,s以上途絶えていた時間の割合である．Fig.~\ref{fig:run1027_summary}に，各走行の速度に対する横偏差とIMU欠落率を示す．
+
+\begin{table}[H]
+  \centering
+  \caption{Autonomous driving runs on October 27, 2026.}
+  \label{tab:runs}
+  \scriptsize
+  \begin{tabular}{llrrrrrp{2.8cm}}
+    \toprule
+    走行 & コース & 速度 [m/s] & 自律 [s] & 横偏差 [m] & 舵角変化率 [$^\circ$/s] & IMU欠落 [\%] & 結果 \\
+    \midrule
+    R1 & 赤 & 3.0 & 15 & -- & -- & 0 & Pure Pursuit，短時間 \\
+    R2 & 赤 & 3.9 & 187 & 0.23 & 5 & 0 & 完走（信号停止あり） \\
+    B1 & 青 & 4.4 & 168 & 0.33 & 8 & 0 & 3周完走 \\
+    B2 & 青 & 4.9 & 130 & 1.20 & 8 & 1 & 分岐で失敗 \\
+    B3 & 青 & 4.9 & 32 & 1.32 & 9 & 0 & 分岐で失敗 \\
+    B4 & 青 & 4.8 & 31 & 1.24 & 12 & 8 & 分岐で失敗 \\
+    B5 & 青 & 4.9 & 161 & 0.78 & 9 & 3 & 2周目の分岐で失敗 \\
+    B6 & 青 & 4.9 & 55 & 0.85 & 7 & 0 & 分岐で失敗 \\
+    B7 & 青 & 4.9 & 30 & 0.81 & 9 & 3 & 分岐で失敗 \\
+    B8 & 青 & 4.9 & 27 & 0.34 & 13 & 27 & 分岐で失敗 \\
+    B9 & 青 & 5.3 & 106 & 0.97 & 2 & 13 & 途中で介入 \\
+    R3 & 赤 & 5.5 & 70 & 1.5 & -- & -- & 隣接車線へ移動 \\
+    R4 & 赤 & 4.8 & 41 & 0.97 & 38 & 66 & 蛇行，介入 \\
+    R5 & 赤 & 4.8 & 33 & 0.87 & 33 & 38 & 蛇行，介入 \\
+    R6 & 赤 & 4.9 & 24 & 0.33 & 12 & 83 & 短時間 \\
+    R7 & 赤 & 4.8 & 136 & 1.32 & 18 & 54 & 蛇行，介入 \\
+    R8 & 赤 & 3.9 & 250 & \todo{} & \todo{} & \todo{} & 信号停止の確認 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\textwidth]{images/run1027_summary.png}
+  \caption{Lateral offset (95th percentile) versus median velocity for the runs on October 27. The color shows the IMU dropout ratio.}
+  \label{fig:run1027_summary}
+\end{figure}
+
+\section{車両応答の同定結果}
+\label{sec:ident_result}
+10月12日の手動走行から同定した車両応答をTable~\ref{tab:ident}に示す．Fig.~\ref{fig:ident_speed}に並進速度の指令値に対する応答を，Fig.~\ref{fig:ident_steer}に舵角の指令値に対する応答の同定値を示す．並進速度は，むだ時間0.20〜0.27\,sと一次遅れ0.39〜0.65\,sで表され，加速の上限は3.4\,m/s$^2$，減速の上限は3.6\,m/s$^2$であった（決定係数0.98）．舵角の指令値に対する等価舵角の応答は，3\,m/s以上でゲイン約1.0，むだ時間と一次遅れの合計0.20〜0.23\,sでほぼ一定であった．従動輪の実舵角と等価舵角の位相差は10\,ms以下であり，従動輪の舵角が車体のヨー運動を直接決めていることを確認した．ただし傾きは1.05〜1.24であり，公称のホイールベースより12\%短い有効ホイールベース0.70\,mに相当した．認識から制御までの遅延は平均0.106\,s（95パーセント点0.15\,s）であった．
+
+また，Fig.~\ref{fig:ident_shimmy}に示すように，従動輪には約8\,Hzのシミーが4\,m/sから現れ，直進でも自励的に成長した（成長率の中央値4.2\,/s）．6.5\,m/sでは発散して横滑りに至ったため，本研究では6\,m/sを超える走行は行わない．
+
+\begin{table}[H]
+  \centering
+  \caption{Identified vehicle response.}
+  \label{tab:ident}
+  \begin{tabular}{lll}
+    \toprule
+    項目 & 同定値 & 備考 \\
+    \midrule
+    並進速度のむだ時間 & 0.20〜0.27\,s & \\
+    並進速度の一次遅れ & 0.39〜0.65\,s & 定常偏差 $-2$\%（4\,m/s），$-9$\%（6\,m/s） \\
+    加速の上限 & 3.4\,m/s$^2$ & \\
+    減速の上限 & 3.6\,m/s$^2$ & 実測最大 3.7〜4.4\,m/s$^2$ \\
+    舵角応答のゲイン & 約1.0 & 3\,m/s以上 \\
+    舵角応答の遅れ & 0.20〜0.23\,s & むだ時間と一次遅れの合計 \\
+    有効ホイールベース & 0.70\,m & 公称0.733\,m \\
+    認識から制御までの遅延 & 0.106\,s & 95パーセント点 0.15\,s \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/ident_speed_response.png}
+  \caption{Response of the measured velocity to the velocity command (manual driving on October 12).}
+  \label{fig:ident_speed}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/ident_steer_response.png}
+  \caption{Identified time constant, gain, dead time, and effective lag of the steering response versus velocity.}
+  \label{fig:ident_steer}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/ident_shimmy.png}
+  \caption{Shimmy of the caster: time series of the caster angle, its spectrum, and the amplitude envelope at 6\,m/s (top) and 4\,m/s (bottom).}
+  \label{fig:ident_shimmy}
+\end{figure}
+
+\section{4\,m/sでの周回走行}
+\label{sec:run4}
+4\,m/sでは，赤コース（10月12日1本，10月27日のR2）と青コース（10月27日のB1）で3周の走行が成立した．Fig.~\ref{fig:run1012_traj}に10月12日の走行軌跡を，Fig.~\ref{fig:run1012_track}に経路追従誤差の時系列を示す．10月12日の赤コース3周は，平均速度3.84\,m/sであった．経路追従誤差は，局所経路に対する横偏差のRMSが0.056\,m（95パーセント点0.093\,m），平滑化後の目標経路に対しては0.27\,m（95パーセント点0.57\,m）であった．局所経路は毎周期，計測した自己位置から引き直されるため，局所経路に対する誤差は小さく出る．Fig.~\ref{fig:run4_ts}に10月27日のR2とB1の速度，横偏差，舵角の指令値の時系列を，Fig.~\ref{fig:run1027_topdown}にB1の走行軌跡を示す．青コースのB1は，トポロジカルマップから生成した進行方向の指示で交差点を3周通過した．車線中心に対する横偏差の95パーセント点は赤で0.23\,m，青で0.33\,mであった．Fig.~\ref{fig:rviz_blue}に走行中の可視化画面を示す．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/run1012_trajectory.png}
+  \caption{Trajectory of the three-lap run on the red course at 4\,m/s (October 12). Left: autonomous (green) and manual (gray) segments. Right: velocity.}
+  \label{fig:run1012_traj}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/run1012_tracking_error.png}
+  \caption{Path-following error with respect to the local path (October 12, 4\,m/s): lateral error, heading error, and velocity.}
+  \label{fig:run1012_track}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\textwidth]{images/run4_timeseries.png}
+  \caption{Time series of velocity, lateral offset from the lane center, and steering command in the runs at 4\,m/s on October 27 (left: R2, red course; right: B1, blue course).}
+  \label{fig:run4_ts}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.98\textwidth]{images/run1027_topdown.png}
+  \caption{GNSS trajectories of the autonomous segments over the lane lines (left: B1, blue course at 4\,m/s; right: B2, blue course at 5\,m/s). The color shows the elapsed time.}
+  \label{fig:run1027_topdown}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/rviz_blue_4ms.png}
+  \caption{Visualization during the blue-course run at 4\,m/s (B1): camera image, generated path, and local path.}
+  \label{fig:rviz_blue}
+\end{figure}
+
+経路生成の出力は，Fig.~\ref{fig:run1012_stability}に示すように，フレーム間で前方3，5，8\,mにおいて横位置がRMSで0.13，0.19，0.35\,m揺らぎ，平滑化後も0.11，0.17，0.31\,mであった．平滑化の時間窓0.15\,sは15\,Hzでは2フレーム分に相当し，時間方向の平滑化としてはほとんど働いていない．舵角の指令値には1\,Hzを超える成分がRMSで0.96$^\circ$含まれ，その約半分は経路の更新に伴う段差に起因した．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/run1012_path_stability.png}
+  \caption{Frame-to-frame fluctuation of the generated path at 5\,m ahead (October 12): lateral position (top) and heading (bottom).}
+  \label{fig:run1012_stability}
+\end{figure}
+
+信号停止では，赤を認識してから停止するまでに停止線を0.81\,m行き過ぎた．Fig.~\ref{fig:run1012_stop}に示すように，同定した車両モデルで閉ループ再現したところ行き過ぎは0.73\,mであり，その内訳は，系の遅れによる1.9\,m，検出と計画の遅延による0.6\,m，縦方向の制御による0.7\,m，減速能力の差による0.3\,mの増加と，速度計画の0.3\,s先読みによる1.9\,mの減少であった．行き過ぎの主因は減速度の設定ではなく系の遅れである．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{images/run1012_stop_replay.png}
+  \caption{Closed-loop reproduction of the signal stop (October 12, stop 3): velocity, remaining distance, acceleration, and velocity error.}
+  \label{fig:run1012_stop}
+\end{figure}
+
+\section{5\,m/s以上での走行と失敗の要因}
+\label{sec:run5}
+5\,m/s以上の14本のうち，3周を完走した走行はなかった．Table~\ref{tab:runs}に示すように，横偏差の95パーセント点は0.78〜1.32\,mと4\,m/sの3〜4倍であった．失敗の要因を，画像，各段の経路，自己位置，指令値，車体の応答の記録から切り分けた結果を以下に述べる．
+
+\subsection{自己位置推定の入力欠落}
+慣性航法装置の出力が1〜20\,s途絶える事象が17本中11本で生じた．自己位置の姿勢は慣性航法装置の姿勢から求めているため，欠落中は車両が旋回しても姿勢が更新されず，自己位置が実際の向きからずれる．Fig.~\ref{fig:run5_imu}にR4の例を示す．欠落中は舵角の指令値の変化量が2〜6倍に増え，赤コースのR4，R5，R7の蛇行はこの区間で生じた．欠落後に装置が再起動し，ジャイロのバイアスと絶対方位が変化した例もあった（B5）．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/run5_imu_dropout.png}
+  \caption{Steering oscillation during IMU dropout (R4, red course at 5\,m/s): velocity, steering command, and dropout periods.}
+  \label{fig:run5_imu}
+\end{figure}
+
+\subsection{進行方向の指示の初期化}
+青コースでは，トポロジカルマップ上の位置を初期化する際に自己位置推定の姿勢を考慮しておらず，ソフトウェアを再起動せずに走行を再開すると，地図が自己位置の向きの分だけ回転した状態で始まっていた（B2で$-99^\circ$，B6で$-179^\circ$）．このため，交差点で進行方向の指示が出ない，または別の地点で出る事象が生じた（Fig.~\ref{fig:run1027_topdown}右）．この不具合は走行後に特定し，修正した．
+
+\subsection{経路追従制御の舵角振動}
+MPCで5\,m/sを走行した区間では，舵角の指令値が$\pm 15^\circ$の制限に張り付く振動が生じ，変化率は18〜38$^\circ$/sであった（Pure Pursuit法の4\,m/sでは5〜8$^\circ$/s）．指令から車体のヨー運動までの遅れは0.1〜0.18\,sであった．MPCの操舵応答の時定数は0.35\,sに設定されていたが，同定値は0.2\,s前後であり，モデルの不一致が振動の一因と考えられる．
+
+\subsection{車体の応答}
+R3（5.5\,m/s，赤）では，舵角の指令値が$+0.7^\circ$（左）であったにもかかわらず，車体は$-6.4^\circ$/s（右）で1.1\,s間旋回し，向きが$13^\circ$変わった．Fig.~\ref{fig:run55_ts}に横位置，障害物の位置，局所経路計画の判断の時系列を，Fig.~\ref{fig:run55_topdown}に軌跡と各周期の経路を，Fig.~\ref{fig:run55_cam}に車線を移動する直前のカメラ画像と経路を示す．局所経路は毎周期，計測した自己位置から引き直されるため，この外乱は追従誤差として補正されず，その後の障害物回避の判断が隣接車線側に向いたことで，車線を移動する結果となった．同様に，B2では舵角の指令値がほぼ0のときに車体が$+3^\circ$旋回した．機構の要因は未確定である\todo{車輪回転速度の常時記録と舵角0保持の試験}．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/run55_lanechange_timeseries.png}
+  \caption{Lane change in R3 (red course at 5.5\,m/s): lateral position, obstacle position, lateral target of the local planner, and path length.}
+  \label{fig:run55_ts}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/run55_lanechange_topdown.png}
+  \caption{Vehicle track, generated paths, local paths, and detected obstacles in R3 from 16.3 to 20.3\,s.}
+  \label{fig:run55_topdown}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/run55_camera_overlay.png}
+  \caption{Camera image and paths just before the lane change in R3 (green: generated path, red: local path).}
+  \label{fig:run55_cam}
+\end{figure}
+
+\subsection{経路生成}
+経路生成の出力の揺れは，前方5\,mで95パーセント点約0.1\,mであり，4\,m/sと同程度であった．出力される経路の長さは中央値8.1\,mで，25\%のフレームで6\,m未満であった．交差点での急旋回中には経路が崩れる例があり，右折の指示が早い場合に手前の白線を拾う例があった（B7）．経路生成の誤差が直接の原因となった失敗はこの1本であった．
+
+\section{周回時間の内訳}
+\label{sec:decomp_result}
+\ref{sec:decomposition}節の方法を，4\,m/sの3周走行3本に適用した結果をTable~\ref{tab:decomp}に示す\todo{解析を実施して数値を記入}．
+
+\begin{table}[H]
+  \centering
+  \caption{Breakdown of the lap time at 4\,m/s.}
+  \label{tab:decomp}
+  \begin{tabular}{lrrr}
+    \toprule
+    項目 & 10/12 赤 & 10/27 R2 赤 & 10/27 B1 青 \\
+    \midrule
+    $T_{\mathrm{lap}}$（3周） [s] & \todo{} & \todo{} & \todo{} \\
+    $T_{\mathrm{ref}}$ [s] & \todo{} & \todo{} & \todo{} \\
+    $\Delta T_{\mathrm{path}}$ [s] & \todo{} & \todo{} & \todo{} \\
+    $\Delta T_{\mathrm{plan}}$ [s] & \todo{} & \todo{} & \todo{} \\
+    $\Delta T_{\mathrm{track}}$ [s] & \todo{} & \todo{} & \todo{} \\
+    $\Delta T_{\mathrm{stop}}$ [s] & \todo{} & -- & -- \\
+    $\Delta T_{\mathrm{res}}$ [s] & \todo{} & \todo{} & \todo{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{考察}
+\label{sec:field_discussion}
+4\,m/sでは赤・青両コースで3周走行が成立し，横偏差の95パーセント点は0.23〜0.33\,mであった．5\,m/s以上では完走した走行はなく，失敗の要因は自己位置推定の入力欠落，進行方向の指示の初期化，経路追従制御の舵角振動，車体の応答であり，経路生成の誤差が直接の原因となった失敗は1本であった．すなわち，4\,m/sから5\,m/sへの高速化を妨げていたのは経路生成ではなく，状態推定と追従制御，車体の応答である．
+
+このうち自己位置推定の入力欠落と進行方向の指示の初期化は，速度計画や経路追従の設計とは独立したシステムの不具合であり，速度を上げたことで顕在化した．これらを除いた条件で経路追従制御と車体の応答がどの速度まで成立するかは，5章の閉ループシミュレーションで評価する．

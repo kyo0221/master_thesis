@@ -1,0 +1,4 @@
+digraph G { rankdir=LR; node [shape=box, style="rounded,filled", fillcolor="#f2f2f2", fontname="Noto Sans CJK JP", fontsize=11]; edge [fontname="Noto Sans CJK JP", fontsize=9];
+cam [label="Camera image"]; yolop [label="Lane mask\n(YOLOPv2)"]; e2e [label="Path generation\n(CNN, 10 points)"]; frenet [label="Frenet\nlocal planner"]; pp [label="Pure Pursuit"]; chassis [label="Vehicle control\nsystem"]; veh [label="Mobility", fillcolor="#dde8f5"];
+cam -> yolop -> e2e -> frenet -> pp -> chassis -> veh;
+gnss [label="GNSS + IMU"]; gnss -> frenet [label="pose"]; }
