@@ -1,0 +1,10 @@
+"# cap_fraction: table,run,v_cap,dist_m,vref_eq_vcap_pct,vref_ge_0.99_pct,vref_limited_by_curv_pct,vref_limited_by_acc_pct,vrec_ge95_all_pct,vrec_ge95_moving_pct,vrec_eq_vcap_moving_pct,stopwin_dist_pct"
+"# T_phys_per_lap: table,run,v_cap,lap_len_m,laps_equiv,Tphys_5.5,Tphys_6.0,Tphys_6.5,dTcap_5.5,dTcap_6.0,dTcap_6.5,T_ref"
+cap_fraction,R2,4.0,780.0,99.71,99.71,0.0,0.29,95.16,99.76,99.71,7.57
+cap_fraction,B1,4.5,767.1,99.61,99.61,0.0,0.39,76.83,76.83,76.35,0.0
+cap_fraction,R8,4.0,782.9,99.69,99.69,0.0,0.31,81.45,85.92,82.3,7.96
+cap_fraction,R1012,4.0,677.3,99.65,99.66,0.0,0.35,97.07,100.0,100.0,9.43
+T_phys_per_lap,R2,4.0,260.0,3.0,47.471,43.556,40.247,17.655,21.571,24.88,65.127
+T_phys_per_lap,B1,4.5,257.9,2.975,47.155,43.331,40.172,10.368,14.192,17.352,57.523
+T_phys_per_lap,R8,4.0,261.0,3.0,47.716,43.787,40.466,17.719,21.648,24.969,65.435
+T_phys_per_lap,R1012,4.0,263.8,2.568,48.245,44.276,40.923,17.899,21.868,25.221,66.144

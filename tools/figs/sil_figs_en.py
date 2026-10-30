@@ -6,42 +6,9 @@ RH = '/tmp/claude-1000/-home-kyo-formula-ws-src/4382733f-291a-4338-b5f1-f82e4a0f
 BS = '/home/kyo/Documents/branch_slowdown_20261025/'
 OUT = '/home/kyo/master_thesis/images/'
 
-# ---- merge-length sweep (p3_sweep) ----
-res = json.load(open(MC + 'res3.json')); g = collections.defaultdict(list)
-for r in res: g[(r['name'], r['course'], r['kw']['v_max'])].append(r)
-names = [f'MPC f{f}' for f in [5, 6, 8, 10, 12, 15]] + ['PP f8', 'PP f15']
-labels = {n: (('MPC' if n.startswith('MPC') else 'Pure Pursuit') + f', merge {n.split("f")[1]} m') for n in names}
-cols = dict(zip(names, ['C2', 'C8', 'C0', 'C1', 'C4', 'C3', 'C0', 'C3']))
-fig, ax = plt.subplots(2, 2, figsize=(11, 6.5), sharex=True)
-for j, course in enumerate(['red', 'blue']):
-    for n in names:
-        vs = sorted(set(k[2] for k in g if k[0] == n and k[1] == course))
-        comp = [np.mean([r['fail'] is None for r in g[(n, course, v)]]) for v in vs]
-        e95 = [np.mean([r['e_max'] for r in g[(n, course, v)]]) for v in vs]
-        ls = '--' if n.startswith('PP') else '-'
-        ax[0, j].plot(vs, comp, ls, marker='o', ms=3, c=cols[n], label=labels[n]); ax[1, j].plot(vs, e95, ls, marker='o', ms=3, c=cols[n], label=labels[n])
-    ax[0, j].set_title(f'{course.capitalize()} course'); ax[0, j].set_ylabel('Completion rate (|e| < 1.5 m, 4 seeds)'); ax[1, j].set_ylabel('Maximum lateral deviation [m]'); ax[1, j].set_xlabel('Velocity limit [m/s]')
-    for a in ax[:, j]: a.grid(alpha=.3)
-ax[0, 1].legend(fontsize=7, ncol=2)
-plt.tight_layout(); plt.savefig(OUT + 'sil_merge_sweep.png', dpi=150); plt.close()
+# ---- merge-length sweep: fig_merge_sweep.py に移行（完走率の縦軸を全パネル0-1に統一、凡例に Pure Pursuit (dashed)）----
 
-# ---- curvature retention (p6_curvature) ----
-xs = [2.5, 4, 6]
-data = {'Generated path (CNN output)': [0.81, 0.55, 0.26], 'Smoothed path, quadratic, fit ≤12 m (recorded)': [0.49, 0.47, 0.41], 'Replay: quadratic, fit ≤12 m': [0.45, 0.42, 0.36], 'Quadratic, fit ≤8 m': [0.74, 0.67, 0.28], 'Quadratic, fit ≤6 m': [0.74, 0.68, 0.26], 'Cubic, fit ≤12 m': [0.79, 0.53, 0.19]}
-jit = {'Generated path': 0.171, 'Quadratic ≤12 m': 0.126, 'Quadratic ≤8 m': 0.073, 'Quadratic ≤6 m': 0.074, 'Cubic ≤12 m': 0.136}
-fig, ax = plt.subplots(1, 3, figsize=(13, 3.8), gridspec_kw=dict(width_ratios=[1.4, 1, 1.2]))
-w = 0.13
-for i, (k, v) in enumerate(data.items()): ax[0].bar(np.arange(3) + (i - 2.5) * w, v, w, label=k)
-ax[0].axhline(1, c='k', lw=.8); ax[0].set_xticks(range(3)); ax[0].set_xticklabels([f'{x} m ahead' for x in xs]); ax[0].set_ylabel('Estimated curvature / course curvature'); ax[0].set_title('Curvature retention in curves (|κ| > 0.04, Oct. 12 bag)', fontsize=10); ax[0].legend(fontsize=6.5); ax[0].grid(alpha=.3, axis='y')
-ax[1].barh(list(jit.keys()), list(jit.values()), color=['gray', 'C3', 'C0', 'C0', 'C4']); ax[1].set_xlabel('MAD of 2nd difference at 5 m ahead [m]'); ax[1].set_title('Frame-to-frame jitter', fontsize=10); ax[1].tick_params(axis='y', labelsize=7)
-rho = np.linspace(0.3, 1.0, 50)
-for alat, c in [(3, 'C0'), (4, 'C1'), (4.5, 'C3')]:
-    ax[2].plot(rho, alat / rho, c=c, label=f'$a_{{y,\\max}}$ = {alat} m/s$^2$')
-ax[2].axhline(6, c='k', ls='--', lw=1); ax[2].text(0.31, 6.2, 'grip limit ≈ 6 m/s$^2$', fontsize=8)
-for r, lab in [(0.47, 'current'), (0.68, '≤8 m')]: ax[2].axvline(r, c='gray', ls=':', lw=.8); ax[2].text(r + 0.01, 12.5, lab, fontsize=8)
-ax[2].set_xlabel('Curvature ratio ρ (estimated / true)'); ax[2].set_ylabel('Actual lateral acceleration $a_y/ρ$ [m/s$^2$]'); ax[2].set_ylim(2, 14); ax[2].legend(fontsize=8); ax[2].grid(alpha=.3)
-ax[2].set_title('Lateral acceleration in sharp curves', fontsize=10)
-plt.tight_layout(); plt.savefig(OUT + 'sil_curvature_horizon.png', dpi=150); plt.close()
+# ---- curvature retention: fig_curvature_horizon.py に分離（縦線ラベルを Oct. 12 (quadratic) に変更）----
 
 # ---- controller comparison (p19_controller) ----
 sys.path.insert(0, MC); from sim import Course

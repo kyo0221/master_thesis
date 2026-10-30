@@ -7,6 +7,7 @@
 \usepackage{enumitem}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{array}
 \usepackage{booktabs}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
@@ -16,12 +17,17 @@
 \setlength{\evensidemargin}{\oddsidemargin}
 \renewcommand{\baselinestretch}{1.2}
 
+% 表の注記を表と同じ幅に収める（lrbox で表の幅を測る）
+\newsavebox{\tblbox}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\tblnote}[1]{\par\vspace{2pt}\parbox{\wd\tblbox}{\raggedright\scriptsize #1}}
+
 % 執筆中の仮置き（提出前にすべて除去する）
 \newcommand{\todo}[1]{\textbf{【TODO: #1】}}
 \newcommand{\figplaceholder}[1]{\fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering #1}}}
 
 \thesis{修 士 論 文}
-\title{視覚情報に基づく自律走行モビリティの周回時間に対する\\経路・速度計画および追従制御の寄与の評価\\\large Evaluation of the Contributions of Path Planning, Velocity Planning, and Path Following to the Lap Time of a Vision-based Autonomous Mobility}
+\title{視覚情報に基づく自律走行モビリティの\\ラップタイムを決定する要因の分析\\\large Analysis of the Factors Determining the Lap Time\\\large of a Vision-Based Autonomous Vehicle}
 \date{2027年2月\todo{日付}}
 \teacher{林原 靖男 教授}
 \organization{千葉工業大学 先進工学研究科 未来ロボティクス専攻}

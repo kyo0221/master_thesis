@@ -1,0 +1,4 @@
+run,config,max_dev_whole_run_m,s_of_max_m,max_dev_in_s60_115_m,smoothed_path_err_x15_mean_abs_m,smoothed_path_err_x15_rms_m,smoothed_path_err_x5_mean_abs_m,local_path_err_x5_mean_abs_m,max_steer_cmd_deg,frac_steer_over_14deg
+rec_A5_red_v40_s2,"A5: cubic smoothing, fixed 15 m merge",1.87,99,1.87,3.54,5.60,0.06,1.40,7.2,0.000
+rec_A45_red_v40_s2,"A4+A5: quadratic smoothing, fixed 15 m merge",1.14,182,0.81,1.61,2.21,0.05,0.47,5.2,0.000
+rec_base_red_v40_s1,"Baseline: cubic smoothing, speed-proportional merge",0.11,46,0.10,3.97,6.72,0.07,0.05,7.7,0.000

@@ -12,7 +12,7 @@ def series(D):
     return t0,M,vm,alive,la
 # Fig A: time series R2 (4ms_blue, red) and B1 (4_ms_blue, blue)
 fig,axes=plt.subplots(3,2,figsize=(11,7),sharex='col')
-for col,(n,title) in enumerate([('4ms_blue','Red course, 4 m/s (R2)'),('4_ms_blue','Blue course, 4 m/s (B1)')]):
+for col,(n,title) in enumerate([('4ms_blue','Red course, 4.0 m/s limit (R2)'),('4_ms_blue','Blue course, 4.5 m/s limit (B1)')]):
     D=load(n); t0,M,vm,alive,la=series(D); t=M[:,0]-t0
     axes[0,col].plot(t,M[:,2],lw=0.8,label='command'); axes[0,col].plot(t,vm,lw=0.8,label='measured'); axes[0,col].set_ylabel('velocity [m/s]'); axes[0,col].set_title(title); axes[0,col].legend(loc='lower right',fontsize=8)
     axes[1,col].plot(la[:,0]-t0,la[:,1],lw=0.8); axes[1,col].set_ylabel('lateral offset [m]'); axes[1,col].set_ylim(-1.5,1.5); axes[1,col].axhline(0,c='k',lw=0.3)
@@ -36,7 +36,7 @@ axes[2].fill_between(t,0,(~alive).astype(float),step='mid',color='r',alpha=0.4);
 axes[0].set_title('R4: red course, 5 m/s, steering oscillation during IMU dropout')
 plt.tight_layout(); plt.savefig(OUT+'/run5_imu_dropout.png',dpi=150); plt.close()
 # Fig D: lateral offset p95 and steering rate vs speed over runs (summary)
-rows=[('4ms_blue',3.9),('4_ms_blue',4.4),('5ms_blue_fail',4.9),('5ms_blue_2fail',4.9),('5ms_blue_fail2',4.9),('5ms_blue_fail3',4.9),('5ms_blue_fail4',4.9),('5ms_blue_fail5',4.9),('5ms_blue_panel',4.8),('5ms_red_tracking',4.8),('5ms_red_tracking2',4.8),('run_20261027_150746',5.3),('run_20261027_151531',4.9),('run_20261027_153104',4.8)]
+rows=[('4ms_blue',3.9),('chassis_101024',3.9),('4_ms_blue',4.4),('5ms_blue_fail',4.9),('5ms_blue_2fail',4.9),('5ms_blue_fail2',4.9),('5ms_blue_fail3',4.9),('5ms_blue_fail4',4.9),('5ms_blue_fail5',4.9),('5ms_blue_panel',4.8),('5ms_red_tracking',4.8),('5ms_red_tracking2',4.8),('run_20261027_150746',5.3),('run_20261027_151531',4.9),('run_20261027_153104',4.8)]
 xs=[];p95=[];dead=[]
 for n,v in rows:
     D=load(n); t0,M,vm,alive,la=series(D); auto=(M[:,3]==0)&(vm>3.5)&(M[:,2]>3)

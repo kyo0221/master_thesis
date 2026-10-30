@@ -1,7 +1,11 @@
 \chapter*{付録}
 \addcontentsline{toc}{chapter}{付録}
+\setcounter{table}{0}
+\renewcommand{\thetable}{A.\arabic{table}}
+\setcounter{figure}{0}
+\renewcommand{\thefigure}{A.\arabic{figure}}
 
-\section*{A. 2024年度AI-Formulaレースの結果}
+\section*{A.1 2024年度AI-Formulaレースの結果}
 2025年3月に開催された2024年度AI-Formulaレースに千葉工業大学チームとして参加し，首位を獲得した．記録をTable~\ref{tab:fy2024}に示す\cite{fujino2026}．
 
 \begin{table}[H]
@@ -18,7 +22,7 @@
   \end{tabular}
 \end{table}
 
-\section*{B. 主要なパラメータ}
+\section*{A.2 主要なパラメータ}
 本システムで用いた主要なパラメータをTable~\ref{tab:params}に示す．
 
 \begin{table}[H]
@@ -43,5 +47,49 @@
   \end{tabular}
 \end{table}
 
-\section*{C. 実車走行の記録項目}
-実車走行で記録したトピックの一覧を示す\todo{required\_topics表を作成}．
+\section*{A.3 実車走行の記録項目}
+実車走行で記録したトピックの一覧をTable~\ref{tab:topics}に示す．レートは，10月27日の走行R2（赤コース，上限速度4\,m/s）の記録（記録時間235.0\,s）のメッセージ数を記録時間で割った値であり，周期的でないトピックは記録した件数を示す．この記録で0件であったトピック（\nolinkurl{/planning/nav_cmd}，\nolinkurl{/restart}，\nolinkurl{/caster_odom}，\nolinkurl{/flag}，\nolinkurl{/odrive_axis0/controller_status}，\nolinkurl{/perception/lane_line_points}）は表から除いた．\nolinkurl{/planning/nav_cmd}は経路選択の指示（std\_msgs/msg/String）であり，青コースで出力される．
+
+\begin{table}[H]
+  \centering
+  \caption{Recorded topics.}
+  \label{tab:topics}
+  \scriptsize
+  \begin{tabular}{p{3.9cm}p{4.4cm}p{2.0cm}p{3.9cm}}
+    \toprule
+    トピック & 型 & レート & 用途 \\
+    \midrule
+    \multicolumn{4}{l}{\textbf{センサと検出}} \\
+    \nolinkurl{/zed/zed_node/rgb/image_rect_color} & \nolinkurl{sensor_msgs/msg/Image} & 約15\,Hz & 経路生成，信号・障害物の検出の入力，再推論 \\
+    \nolinkurl{/zed/zed_node/rgb/camera_info} & \nolinkurl{sensor_msgs/msg/CameraInfo} & 約15\,Hz & 画像上の経路点の車両座標系への投影 \\
+    \nolinkurl{/perception/objects} & \nolinkurl{object_detection_msgs/msg/ObjectInfoArray} & 約15\,Hz & 信号パネルとコーンの検出結果 \\
+    \nolinkurl{/vectornav/imu} & \nolinkurl{sensor_msgs/msg/Imu} & 約20\,Hz & 角速度，加速度，姿勢（ヨーレートから曲率を求める） \\
+    \nolinkurl{/vectornav/velocity_body} & \nolinkurl{geometry_msgs/msg/TwistWithCovarianceStamped} & 約20\,Hz & 慣性航法装置の速度 \\
+    \nolinkurl{/vectornav/pose} & \nolinkurl{geometry_msgs/msg/PoseWithCovarianceStamped} & 約20\,Hz & 慣性航法装置の位置と姿勢 \\
+    \nolinkurl{/vectornav/gnss} & \nolinkurl{sensor_msgs/msg/NavSatFix} & 約20\,Hz & 評価用の参照位置（ラップタイム，軌跡） \\
+    \nolinkurl{/joy} & \nolinkurl{sensor_msgs/msg/Joy} & 約11\,Hz & ジョイスティック入力（介入の検出） \\
+    \multicolumn{4}{l}{\textbf{経路・計画・指令}} \\
+    \nolinkurl{/planner/vision_path} & \nolinkurl{nav_msgs/msg/Path} & 約15\,Hz & 経路生成の出力 \\
+    \nolinkurl{/planner/global_path} & \nolinkurl{nav_msgs/msg/Path} & 約15\,Hz & 平滑化後の経路 \\
+    \nolinkurl{/planner/local_path} & \nolinkurl{nav_msgs/msg/Path} & 約10\,Hz & 局所経路計画の出力 \\
+    \nolinkurl{/planner/speed_path} & \nolinkurl{speed_path_msgs/msg/SpeedPath} & 約10\,Hz & 速度計画の出力（経路点と速度列） \\
+    \nolinkurl{/planning/stop_point} & \nolinkurl{speed_path_msgs/msg/StopPoint} & 340件（事象） & 信号・障害物に対する停止点 \\
+    \nolinkurl{/cmd_vel} & \nolinkurl{steered_drive_msg/msg/SteeredDrive} & 約20\,Hz & 並進速度と舵角の指令値 \\
+    \nolinkurl{/autonomous} & \nolinkurl{std_msgs/msg/Bool} & 2件（事象） & 自律走行の開始と解除 \\
+    \multicolumn{4}{l}{\textbf{自己位置と座標変換}} \\
+    \nolinkurl{/localization/odom} & \nolinkurl{nav_msgs/msg/Odometry} & 約49\,Hz & 自己位置推定（オドメトリ） \\
+    \nolinkurl{/tf} & \nolinkurl{tf2_msgs/msg/TFMessage} & 約45\,Hz & 座標変換 \\
+    \nolinkurl{/tf_static} & \nolinkurl{tf2_msgs/msg/TFMessage} & 1件 & 固定の座標変換 \\
+    \multicolumn{4}{l}{\textbf{車体制御系}} \\
+    \nolinkurl{/chassis/velocity_body} & \nolinkurl{geometry_msgs/msg/TwistWithCovarianceStamped} & 約460\,Hz & 駆動輪の回転速度から求めた並進速度 \\
+    \nolinkurl{/can_rx_711} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 約460\,Hz & 駆動輪の回転速度 \\
+    \nolinkurl{/can_rx_012} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 100\,Hz & 従動輪エンコーダ（舵角） \\
+    \nolinkurl{/caster_data} & \nolinkurl{std_msgs/msg/Float64MultiArray} & 約470\,Hz & 従動輪の目標舵角，実測舵角，回転位置 \\
+    \nolinkurl{/can_tx} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 約1.4\,kHz & 駆動輪の回転速度の指令などの送信フレーム \\
+    \nolinkurl{/odrive_axis0/control_message} & \nolinkurl{odrive_can/msg/ControlMessage} & 約470\,Hz & 従動輪のばねプリロード機構への位置指令 \\
+    \nolinkurl{/can_rx_309} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 100\,Hz & プリロード機構の位置推定 \\
+    \nolinkurl{/can_rx_301} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 10\,Hz & プリロード機構の軸状態 \\
+    \nolinkurl{/can_rx_712} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 10\,Hz & 非常停止の状態 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
