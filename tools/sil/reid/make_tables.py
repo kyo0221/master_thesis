@@ -1,5 +1,5 @@
-"""再同定後の SIL（silmatrix/out_reid/res）の集計表。tables_reid.md と各 csv、図用の pkl を reid/ に書く。
-usage: python3 make_tables.py [--decomp out_reid/decomp.csv]
+"""再同定後の SIL（silmatrix/out_reid3/res、全群を 1 回の実行にまとめたもの）の集計表。tables_reid.md と各 csv、図用の pkl を reid/ に書く。
+usage: SIL_OUT=out_reid3 SIL_OUT2=out_reid3 python3 make_tables.py [--decomp <silmatrix>/out_reid3/decomp.csv]
 決定ずみの集計規則（従来どおり）: 完走 = 2 周に到達し最大横偏差 1.5 m 以内、2 周目ラップは完走した試行のみ、Welch t 検定（完走ラップ、各群 2 本以上）、
 Fisher の正確検定（両側、完走数）、Bonferroni 参考値 0.05/20=0.0025、n=5 の Wilson 95% 区間。"""
 import os
@@ -46,7 +46,7 @@ for f in sorted(glob.glob(f'{RES2}/R1pp_b1_red_v40_s*_aux.pkl')):
     meta2 = pickle.load(open(f, 'rb')).get('meta')
     break
 if meta2:
-    P('- 信号停止（表3）・R1/B1 相当（表7・8b）は再実行（out_reid2）: ' + ' '.join(f"{k}={meta2['env'].get(k)}" for k in ('SIG_PYLON_R', 'SIG_PANEL_R', 'SIL_DIST_BIAS')) + '。コーンの報告距離/実距離の比（R1 の 3 接近から再計算）は実距離 2–4 m 1.00、4–6 0.97、6–8 0.84、8–10 0.76、10–13 0.70、13–17 0.61、17–22 0.55、22–30 0.49、30–40 0.52（区間中央値 3, 5, 7, 9, 11.5, 15, 19.5, 26, 35 で折れ線補間）。表1・2・4・5・6・8 は out_reid（検知距離 17.2/21.9 m だが信号なしの走行なので無関係）。\n')
+    P('- 全群（要素別・信号停止・R1/B1 相当・内訳）を同じ車両パラメータ・同じ認識条件（コーン検知 17.7 m、パネル 22.9 m、遅延 0.07 s、実測誤差モデル）で 1 回の実行（out_reid3）にまとめた。車両は走行試験の同定値（並進 時定数 0.21 s・ゲイン 0.98・むだ時間 0.05 s、加速上限 4.0・減速上限 4.0 m/s²、操舵 時定数 0.23 s・むだ時間 0.05 s・ゲイン 0.96）。信号停止（表3）と R1 相当（表7・8b）は ' + ' '.join(f"{k}={meta2['env'].get(k)}" for k in ('SIG_PYLON_R', 'SIG_PANEL_R', 'SIL_DIST_BIAS')) + '（bias=1 の走行）。コーンの報告距離/実距離の比（R1 の 3 接近から再計算）は実距離 2–4 m 1.00、4–6 0.97、6–8 0.84、8–10 0.76、10–13 0.70、13–17 0.61、17–22 0.55、22–30 0.49、30–40 0.52（区間中央値 3, 5, 7, 9, 11.5, 15, 19.5, 26, 35 で折れ線補間）。表1・2・4・5・6・8 は信号なしの走行なので検知距離は結果に効かない。\n')
 P('- 完走 = 2 周に到達し、コース中心線に対する最大横偏差が 1.5 m 以内（2.5 m で打切り）。ラップは 2 周目（1 周目は発進を含む）。各条件 5 シード。')
 P('- 信号停止の行き過ぎは真の停止線（実コーン位置 s=136 m の 3.3 m 手前 = s 132.7 m）に対する量（正 = 越えた）。d0 = 停止点が最初に発行されたときの認識上の停止点までの距離（= 報告されたコーンの距離 − 3.3 m）。\n')
 
@@ -314,7 +314,7 @@ pickle.dump(VAL, open(f'{OUT}/validity_reid.pkl', 'wb'))
 
 # ------------------------------------------------------------------ 8. 内訳
 P('## 8. SIL の内訳（decomp_sil.py、2周目、1周あたり、完走した試行の平均±SD）\n')
-P('- T_lap = T_phys + ΔT_cap + ΔT_plan + ΔT_path + ΔT_track + ΔT_stop。物理限界: 上限速度 6.0 m/s、加速 3.4、減速 4.0、横加速度 6.0 m/s²。v_ref の上限は min(v_cap, 6.0)（v_cap > 6.0 では ΔT_cap=0、超過分は ΔT_plan（負）に入る）。速度計画の設定値 a_y 3.0、a_x 3.0、v_cap。')
+P('- T_lap = T_phys + ΔT_cap + ΔT_plan + ΔT_path + ΔT_track + ΔT_stop。物理限界: 上限速度 6.0 m/s、加速 4.0、減速 4.0、横加速度 6.0 m/s²。v_ref の上限は min(v_cap, 6.0)（v_cap > 6.0 では ΔT_cap=0、超過分は ΔT_plan（負）に入る）。速度計画の設定値 a_y 3.0、a_x 3.0、v_cap。')
 P('- 曲率は真の軌跡のヨーレート/速度を走行距離に対し σ=1 m で平滑。ラップ境界は開始線の通過。\n')
 if os.path.exists(args.decomp):
     D = {}
@@ -345,7 +345,7 @@ if os.path.exists(args.decomp):
             rows8.append([pre, course, v / 10, len(rs)] + [f"{np.mean([r[c_] for r in rs]):.3f}" for c_ in cols] + [f"{sd([r[c_] for r in rs]):.3f}" for c_ in cols] + [f"{max(abs(r['res']) for r in rs):.4f}"])
     write_csv('decomp_table_reid.csv', ['condition', 'course', 'vmax_mps', 'n'] + [f'{c_}_mean' for c_ in cols] + [f'{c_}_sd' for c_ in cols] + ['max_abs_residual'], rows8)
     P('')
-    P('### 8b. 妥当性の走行（R1 相当・B1 相当）の内訳（再実行 out_reid2。周ごと、5シードの平均±SD。実車の R1・B1 の内訳と並べて比べるための値）\n')
+    P('### 8b. 妥当性の走行（R1 相当・B1 相当）の内訳（周ごと、5シードの平均±SD。実車の R1・B1 の内訳と並べて比べるための値）\n')
     P('- 「全周平均」「2–3周平均」は 1 周あたりの値（各シードの周の平均を取り、5シードの平均±SD）。1 周目は静止発進を含むので、2–3周平均も併記する。R1 相当 pp・距離誤差あり（bias=1）と B1 相当が実車の内訳と並べる対象。\n')
     P('| 構成 | 検出 | 周 | n | T_lap | T_phys | ΔT_cap | ΔT_plan | ΔT_path | ΔT_track | ΔT_stop |')
     P('|---|---|---|---|---|---|---|---|---|---|---|')

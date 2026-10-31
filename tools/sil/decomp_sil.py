@@ -14,7 +14,7 @@ SIL の記録を decomp_lib.Run の属性へ次のように対応づける。
   r.stop_t    /planning/stop_point    aux['stop']: 受信時刻
   vcap, ax_plan, ay_plan              cfg/<tag>.yaml の linear_max.vel, linear_max.acc, a_lat_max
 
-物理限界は v 6.0 m/s, 加速 3.4, 減速 4.0（旧 3.6。R2 の信号停止で −4.0 m/s^2 への追従が実測されたため）, a_y 6.0 m/s^2。v_ref の上限は min(v_cap, 6.0)。窓の判定は decomp_lib の既定値のまま。
+物理限界は v 6.0 m/s, 加速 4.0（旧 3.4。車両試験の同定値 3.95）, 減速 4.0（旧 3.6。R2 の信号停止で −4.0 m/s^2 への追従が実測されたため。同定値 4.06）, a_y 6.0 m/s^2。v_ref の上限は min(v_cap, 6.0)。窓の判定は decomp_lib の既定値のまま。
 周回境界は 開始位置を通る直線の通過（decomp_lib.lap_edges_gnss）。完了した周のみを対象にし、最後の部分周は捨てる。
 
 usage:
@@ -112,7 +112,7 @@ def prepare_sil(r, n_laps=None):
 
 
 def decompose_sil(r, vphys=6.0, ax_dec_ref=4.0, **kw):
-    """decomp_lib.decompose を呼ぶ。物理限界は 上限速度 vphys=6.0、加速 3.4、減速 ax_dec_ref=4.0、a_y 6.0。
+    """decomp_lib.decompose を呼ぶ。物理限界は 上限速度 vphys=6.0、加速 ax_acc_ref=4.0（decomp_lib の既定値）、減速 ax_dec_ref=4.0、a_y 6.0。
     v_ref の上限は min(v_cap, vphys)（method.tex の定義: 物理限界の速度列にソフトウェアの上限を「加える」）。
     v_cap > vphys では ΔT_cap=0 となり、物理限界を超えた分は v_plan（設定値の v_cap）側で ΔT_plan に入る。
     decomp_lib は v_ref と v_plan に同じ r.vcap を使うため、profile() の 1 回目の呼び出し（v_ref）だけ上限を丸める。"""

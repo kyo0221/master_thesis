@@ -313,7 +313,7 @@ def lap_times(r, lap_mode):
     return laps
 
 
-def decompose(r, ay_ref=6.0, ax_acc_ref=3.4, ax_dec_ref=4.0, ay_plan=3.0, ax_plan=None,
+def decompose(r, ay_ref=6.0, ax_acc_ref=4.0, ax_dec_ref=4.0, ay_plan=3.0, ax_plan=None,
               sig_m=1.0, sig_class=1.5, kcurve=0.04, mode='prev', end_frac=0.95, vphys=6.0,
               lap_mode='gnss', zones=None, nowin=False, bounds=None):
     ax_plan = r.ax_plan if ax_plan is None else ax_plan

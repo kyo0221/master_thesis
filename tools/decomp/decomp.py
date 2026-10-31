@@ -3,7 +3,7 @@
     T_lap = T_phys + ΔT_cap + ΔT_path + ΔT_plan + ΔT_track + ΔT_stop + ΔT_res
     T_ref = T_phys + ΔT_cap
 
-対象: R1 (赤 4.0 m/s), B1 (青 4.5 m/s) の 2 走行。物理限界は暫定値 (v≤6.0 m/s, 加速 3.4, 減速 4.0, 横加速度 6.0)。
+対象: R1 (赤 4.0 m/s), B1 (青 4.5 m/s) の 2 走行。物理限界は v≤6.0 m/s (暫定), 加速 4.0 (車両試験の同定値 3.95), 減速 4.0 (同 4.06), 横加速度 6.0 (暫定)。
 車輪半径: 既定は同定値 0.1265 m (記録の速度 ×1.0202)。0.124 m 換算は感度の 1 行 (scale=1.0)。
 使い方:  PYTHONPATH=<lp> <lp>/venv/bin/python decomp.py     (<lp> = 抽出済み pkl のあるディレクトリ。環境変数 LP で decomp_lib の既定を上書き可)
 出力:    decomp_table.md, decomp_*.csv (このディレクトリ), decomp_results.pkl (図用, decomp_lib.SCRATCH)
@@ -123,7 +123,7 @@ def main():
 
     P('# ラップタイム内訳 (decomp)\n')
     P('T_lap = T_phys + ΔT_cap + ΔT_path + ΔT_plan + ΔT_track + ΔT_stop + ΔT_res　(T_ref = T_phys + ΔT_cap)。単位 s、符号付き (+ は時間の増加)。\n')
-    P('- T_phys: 走行軌跡に物理限界 (v≤6.0 m/s [従動輪シミー限界], a_acc=3.4, a_dec=4.0 m/s² [暫定], a_y,max=6.0) のみを与えて前方・後方走査した所要時間')
+    P('- T_phys: 走行軌跡に物理限界 (v≤6.0 m/s [従動輪シミー限界], a_acc=4.0, a_dec=4.0 m/s² [車両試験の同定値 3.95, 4.06], a_y,max=6.0) のみを与えて前方・後方走査した所要時間')
     P('- T_ref : T_phys に ソフトウェア上限 v_cap (R1 4.0, B1 4.5 m/s) を加えた所要時間。ΔT_cap = T_ref − T_phys')
     P('- ΔT_plan = T_plan,driven − T_ref (T_plan,driven: a_y=3.0, a_x=3.0, v_cap)')
     P('- ΔT_path = T_plan,rec − T_plan,driven (T_plan,rec: speed_path の 0.3 s プレビュー点の速度, 停止窓は窓直前の計画速度 v_b で置換)')
