@@ -1,6 +1,0 @@
-digraph G { rankdir=LR; node [shape=box, style="rounded,filled", fillcolor="#f2f2f2", fontname="Noto Sans CJK JP", fontsize=11]; edge [fontname="Noto Sans CJK JP", fontsize=9];
-cam [label="Camera image"]; vp [label="Path generation\n(3 directions)"]; sm [label="Path smoothing"]; lp [label="Frenet\nlocal planner"]; sp [label="Velocity planning\n(curvature, stop point)"]; tr [label="Path following\n(Pure Pursuit / MPC)"]; ch [label="Vehicle control\nsystem"]; veh [label="Mobility", fillcolor="#dde8f5"];
-det [label="Object / signal\ndetection"]; loc [label="Localization\n(wheel + IMU)"]; nav [label="Direction command\n(topological map)"];
-cam -> vp -> sm -> lp -> sp -> tr -> ch -> veh;
-cam -> det; det -> lp [label="obstacles"]; det -> sp [label="stop point"];
-loc -> sm; loc -> lp; loc -> nav; nav -> vp [label="left/straight/right"]; }

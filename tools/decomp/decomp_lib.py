@@ -12,11 +12,10 @@ import os
 import sys
 import math
 import pickle
-import struct
 import numpy as np
 from scipy.ndimage import gaussian_filter1d, uniform_filter1d
 
-LP = '/tmp/claude-1000/-home-kyo-formula-ws-src/be5e80e8-b069-4d04-9a27-c33b6353d153/scratchpad/lp'
+LP = os.environ.get('LP', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data_1027'))
 sys.path.insert(0, LP)
 from common import enu, to_map  # noqa: E402
 from mode import modes  # noqa: E402
@@ -25,9 +24,11 @@ DS = 0.1            # s グリッド間隔 [m]
 DT_CTRL = 0.05      # 制御周期 (controller_server_node interval_ms=50)
 TPRE = 0.3          # velocity_preview_time
 WHEEL_R_CFG = 0.124  # chassis_driver の設定値
-WHEEL_R_TRUE = 0.1265  # GNSS 比から同定した実効半径 (メモリ vehicle_speed_source_1012)
+WHEEL_R_TRUE = 0.1265  # GNSS 比から同定した実効半径 (同定で採用した値)
+SCALE = WHEEL_R_TRUE / WHEEL_R_CFG   # 車輪速の換算係数 (既定。0.124 m 換算は scale=1.0)
 
-SCRATCH = '/tmp/claude-1000/-home-kyo-formula-ws-src/2ce42fe3-f430-480e-b923-ae2606bdf87f/scratchpad/decomp'
+HERE = os.path.dirname(os.path.abspath(__file__))
+SCRATCH = os.environ.get('DECOMP_SCRATCH', '/tmp/claude-1000/-home-kyo-formula-ws-src/2ce42fe3-f430-480e-b923-ae2606bdf87f/scratchpad/decomp')   # 図用の中間 pkl
 
 
 class Run:
@@ -84,41 +85,9 @@ def load_1027(path, label, vcap, ax_plan=3.0, course=''):
     return r
 
 
-def load_1012(vcap=4.0, ax_plan=6.0):
-    d = np.load('/home/kyo/formula_sub_ws/aif1012_analysis/perception_planning_20261012_164813.npz')
-    P = pickle.load(open(os.path.join(SCRATCH, 'p1012.pkl'), 'rb'))
-    T0 = d['cmd_vel'][0, 0]
-    r = Run()
-    r.label, r.course, r.T0, r.vcap, r.ax_plan = 'R-1012', 'red', T0, vcap, ax_plan
-    r.src = 'perception_planning_20261012_164813.npz'
-    c = d['can_rx_711']
-    rpm = np.array([struct.unpack('<ii', bytes(int(b) for b in row[1:9])) for row in c], float)
-    vw = (rpm[:, 0] + rpm[:, 1]) / 2.0 * 2 * np.pi / 60.0 * WHEEL_R_CFG
-    r.tv, r.v = _bin_mean(c[:, 0] - T0, vw)
-    r.ti, r.wz = d['vectornav_imu'][:, 0] - T0, d['vectornav_imu'][:, 2]
-    g = d['vectornav_gnss']
-    m, gx, gy = _gnss_map(g[:, 1], g[:, 2])
-    r.tg, r.gx, r.gy = g[m, 0] - T0, gx, gy
-    O = np.array([x[:8] for x in P['/localization/odom']], float)
-    O[:, 0] -= T0
-    O[:, 1] -= T0
-    r.odo = O
-    r.sp = [(x[0] - T0, x[1] - T0, x[3]) for x in P['/planner/speed_path'] if len(x[3]) > 1]
-    r.stop_t = np.array([x[0] - T0 for x in P['/planning/stop_point']], float)
-    r.nav = []
-    a = d['autonomous']
-    r.ta = a[0, 0] - T0
-    r.tb = a[1, 0] - T0
-    cm = d['cmd_vel']
-    r.cmd = np.c_[cm[:, 0] - T0, cm[:, 2]]
-    vn = d['vectornav_velocity_body']
-    r.vn = np.c_[vn[:, 0] - T0, vn[:, 2], vn[:, 3]]
-    return r
-
-
 # ---------------------------------------------------------------- 基本量
-def build_s(r, scale=1.0):
-    """車輪速から s(t) (自律開始 ta で 0)。scale は実効半径補正 (感度解析用)。"""
+def build_s(r, scale=SCALE):
+    """車輪速から s(t) (自律開始 ta で 0)。記録の速度は半径 0.124 m 換算なので、既定で 0.1265/0.124 倍する。scale=1.0 が設定値 (0.124 m) のまま。"""
     v = np.maximum(r.v, 0.0) * scale
     dt = np.diff(r.tv, prepend=r.tv[0] - 0.01)
     s = np.cumsum(v * dt)
@@ -315,7 +284,7 @@ def _window_end(r, t0, last_pub, vb, end_frac):
 
 
 # ---------------------------------------------------------------- 内訳の計算
-def prepare(r, scale=1.0, lap_mode='gnss', t_cut=None, ksrc='imu'):
+def prepare(r, scale=SCALE, lap_mode='gnss', t_cut=None, ksrc='imu'):
     """s(t), ラップ境界, 速度計画の記録値, 曲率の生値を用意する。"""
     build_s(r, scale)
     r.t_cut = r.tb if t_cut is None else t_cut
@@ -344,9 +313,9 @@ def lap_times(r, lap_mode):
     return laps
 
 
-def decompose(r, ay_ref=6.0, ax_acc_ref=3.4, ax_dec_ref=3.6, ay_plan=3.0, ax_plan=None,
+def decompose(r, ay_ref=6.0, ax_acc_ref=3.4, ax_dec_ref=4.0, ay_plan=3.0, ax_plan=None,
               sig_m=1.0, sig_class=1.5, kcurve=0.04, mode='prev', end_frac=0.95, vphys=6.0,
-              lap_mode='gnss', zones=None, nowin=False):
+              lap_mode='gnss', zones=None, nowin=False, bounds=None):
     ax_plan = r.ax_plan if ax_plan is None else ax_plan
     laps_t = lap_times(r, lap_mode)
     t_end = laps_t[-1]
@@ -398,6 +367,8 @@ def decompose(r, ay_ref=6.0, ax_acc_ref=3.4, ax_dec_ref=3.6, ay_plan=3.0, ax_pla
     if zones:
         for z in zones:
             bnd += [S(z[0]), S(z[1])]
+    if bounds:
+        bnd += [S(t) for t in bounds]
     nodes = np.unique(np.round(np.r_[grid[grid <= s_end], np.array(bnd)], 9))
     nodes = nodes[nodes <= s_end + 1e-9]
     mid = 0.5 * (nodes[:-1] + nodes[1:])

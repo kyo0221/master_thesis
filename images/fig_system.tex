@@ -1,0 +1,71 @@
+\begin{tikzpicture}[
+  font=\fontspec{TeX Gyre Heros Cn}\fontsize{8}{8.8}\selectfont,
+  >={Stealth[length=1.6mm,width=1.2mm]},
+  mod/.style={draw=black!55, line width=0.5pt, fill=black!4, anchor=north west, inner sep=0pt},
+  nd/.style={draw=black!85, line width=0.4pt, fill=white, align=center, inner xsep=1.5pt, inner ysep=1.5pt, minimum height=1.0cm},
+  lab/.style={font=\fontspec{TeX Gyre Heros Cn}\fontsize{7.5}{8.4}\selectfont, align=center, inner sep=1pt},
+  arr/.style={->, line width=0.5pt}
+]
+  % ---------- 上段: 5 つのモジュール (高さ共通) ----------
+  \node[mod, minimum width=1.44cm, minimum height=3.74cm] (sens) at (0,0) {};
+  \node[mod, minimum width=1.44cm, minimum height=3.74cm, xshift=0.95cm] (perc) at (sens.north east) {};
+  \node[mod, minimum width=4.54cm, minimum height=3.74cm, xshift=1.25cm] (plan) at (perc.north east) {};
+  \node[mod, minimum width=2.72cm, minimum height=3.74cm, xshift=1.30cm] (ctrl) at (plan.north east) {};
+  \node[mod, minimum width=1.20cm, minimum height=3.74cm, xshift=1.20cm] (veh)  at (ctrl.north east) {};
+
+  \node[anchor=north west, inner sep=0pt] at ($(sens.north west)+(0.07,-0.07)$) {\bfseries Sensing};
+  \node[anchor=north west, inner sep=0pt] at ($(perc.north west)+(0.07,-0.07)$) {\bfseries Perception};
+  \node[anchor=north west, inner sep=0pt] at ($(plan.north west)+(0.07,-0.07)$) {\bfseries Planning};
+  \node[anchor=north west, inner sep=0pt] at ($(ctrl.north west)+(0.07,-0.07)$) {\bfseries Control};
+  \node[anchor=north west, inner sep=0pt] at ($(veh.north west)+(0.07,-0.07)$)  {\bfseries Vehicle};
+
+  % Sensing (縦 3 つ)
+  \node[nd, minimum width=1.28cm] (cam) at ($(sens.north)+(0,-0.88)$) {Camera};
+  \node[nd, minimum width=1.28cm] (enc) at ($(sens.north)+(0,-2.00)$) {Wheel and\\caster\\encoders};
+  \node[nd, minimum width=1.28cm] (imu) at ($(sens.north)+(0,-3.12)$) {Inertial\\navigation\\unit};
+
+  % Perception (縦 2 つ)
+  \node[nd, minimum width=1.28cm] (pg)  at ($(perc.north)+(0,-0.88)$) {Path\\generation\\(CNN)};
+  \node[nd, minimum width=1.28cm] (det) at ($(perc.north)+(0,-2.00)$) {Signal and\\obstacle\\detection};
+
+  % Planning (横 3 つ)
+  \node[nd, minimum width=1.24cm] (ps) at ($(plan.north west)+(0.73,-0.88)$) {Path\\smoothing};
+  \node[nd, minimum width=1.24cm, right=0.30cm of ps] (lp) {Local path\\planning};
+  \node[nd, minimum width=1.24cm, right=0.30cm of lp] (vp) {Velocity\\planning};
+  \draw[arr] (ps) -- (lp);
+  \draw[arr] (lp) -- (vp);
+
+  % Control (横 2 つ)
+  \node[nd, minimum width=1.10cm] (pf) at ($(ctrl.north west)+(0.66,-0.88)$) {Path\\following};
+  \node[nd, minimum width=1.10cm, right=0.30cm of pf] (cc) {Chassis\\control};
+  \draw[arr] (pf) -- (cc);
+
+  % Vehicle
+  \node[nd, minimum width=1.04cm] (iwm) at ($(veh.north)+(0,-0.88)$) {In-wheel\\motors};
+
+  % ---------- 下段: Localization ----------
+  \coordinate (L1) at ($(perc.south west)+(0,-1.0)$);
+  \coordinate (L2) at ($(ctrl.south east)+(0,-2.35)$);
+  \node[mod, inner sep=0pt, fit=(L1)(L2), anchor=center] (loc) {};
+  \node[anchor=north west, inner sep=0pt] at ($(loc.north west)+(0.07,-0.07)$) {\bfseries Localization};
+  \node[nd, minimum width=1.30cm, minimum height=0.60cm] (odo) at ($(loc.north west)+(1.75,-0.82)$) {Odometry};
+  \node[nd, minimum width=1.95cm, minimum height=0.60cm] (route) at (plan.north |- odo) {Route instruction};
+  \draw[arr] (odo) -- (route);
+
+  \node[nd, fill=black!10, minimum width=1.95cm, minimum height=0.60cm] (topo) at ($(route.south |- loc.south)+(0,-0.95)$) {Topological map};
+  \draw[arr] (topo.north) -- (topo.north |- loc.south);
+
+  % ---------- 上段のモジュール間矢印 (同じ高さで水平) ----------
+  \draw[arr] (sens.east |- cam.center) -- node[lab, below=2pt] {camera\\image} (perc.west |- cam.center);
+  \draw[arr] (perc.east |- cam.center) -- node[lab, below=2pt] {target path,\\obstacles,\\stop point} (plan.west |- cam.center);
+  \draw[arr] (plan.east |- cam.center) -- node[lab, below=2pt] {local path\\with velocity\\profile} (ctrl.west |- cam.center);
+  \draw[arr] (ctrl.east |- cam.center) -- node[lab, below=2pt] {wheel\\speed\\commands} (veh.west |- cam.center);
+
+  % ---------- Localization からの上向き矢印 ----------
+  \draw[arr] (perc.south |- loc.north) -- node[lab, right=1pt] {route instruction} (perc.south);
+  \draw[arr] (plan.south |- loc.north) -- node[lab, right=1pt] {odometry, route instruction} (plan.south);
+  \draw[arr] (ctrl.south |- loc.north) -- node[lab, right=1pt] {odometry} (ctrl.south);
+
+  % ---------- Sensing -> Localization ----------
+  \draw[arr] (sens.south) -- (sens.south |- odo.center) -- node[lab, above=1pt] {wheel speed,\\attitude} (loc.west |- odo.center);
+\end{tikzpicture}

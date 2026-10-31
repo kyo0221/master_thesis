@@ -3,8 +3,10 @@
     T_lap = T_phys + ΔT_cap + ΔT_path + ΔT_plan + ΔT_track + ΔT_stop + ΔT_res
     T_ref = T_phys + ΔT_cap
 
-使い方:  PYTHONPATH=<lp> <lp>/venv/bin/python decomp.py
-出力:    decomp_table.md, decomp_*.csv, decomp_results.pkl (図用)
+対象: R1 (赤 4.0 m/s), B1 (青 4.5 m/s) の 2 走行。物理限界は暫定値 (v≤6.0 m/s, 加速 3.4, 減速 4.0, 横加速度 6.0)。
+車輪半径: 既定は同定値 0.1265 m (記録の速度 ×1.0202)。0.124 m 換算は感度の 1 行 (scale=1.0)。
+使い方:  PYTHONPATH=<lp> <lp>/venv/bin/python decomp.py     (<lp> = 抽出済み pkl のあるディレクトリ。環境変数 LP で decomp_lib の既定を上書き可)
+出力:    decomp_table.md, decomp_*.csv (このディレクトリ), decomp_results.pkl (図用, decomp_lib.SCRATCH)
 """
 import os
 import csv
@@ -12,12 +14,10 @@ import pickle
 import numpy as np
 from decomp_lib import *   # noqa: F401,F403
 
-OUT = SCRATCH
+OUT = HERE
 RUNS = [
-    dict(label='R2', desc='10/27 R2 赤 4 m/s (信号停止あり)', load=lambda: load_1027(LP + '/4ms_blue.pkl', 'R2', 4.0, course='red'), cut=None),
-    dict(label='B1', desc='10/27 B1 青 4.5 m/s (交差点通過)', load=lambda: load_1027(LP + '/4_ms_blue.pkl', 'B1', 4.5, course='blue'), cut=181.19),
-    dict(label='R8', desc='10/27 R8 赤 4 m/s (停止試験)', load=lambda: load_1027(LP + '/chassis_101024.pkl', 'R8', 4.0, course='red'), cut=None),
-    dict(label='R1012', desc='10/12 赤 4 m/s', load=lambda: load_1012(4.0, 6.0), cut=201.49),
+    dict(label='R1', desc='赤 4.0 m/s (信号停止 3 回)', load=lambda: load_1027(LP + '/4ms_blue.pkl', 'R1', 4.0, course='red'), cut=None),
+    dict(label='B1', desc='青 4.5 m/s (分岐通過)', load=lambda: load_1027(LP + '/4_ms_blue.pkl', 'B1', 4.5, course='blue'), cut=181.19),
 ]
 COLS = [('T_lap', 'T_lap'), ('phys', 'T_phys'), ('cap', 'ΔT_cap'), ('ref', 'T_ref'), ('path', 'ΔT_path'),
         ('plan', 'ΔT_plan'), ('track', 'ΔT_track'), ('stop', 'ΔT_stop'), ('res', 'ΔT_res')]
@@ -46,10 +46,20 @@ def nav_zones(r, gap=20.0):
     return zones
 
 
+def nav_windows(r):
+    """nav_cmd (イベント配信) が straight 以外だった区間 [(t0, t1, cmd)]。最後の straight 配信で閉じる。"""
+    out = []
+    for i, (t, c) in enumerate(r.nav):
+        if c != 'straight' and i + 1 < len(r.nav):
+            out.append((t, r.nav[i + 1][0], c))
+    return out
+
+
 def build(cfg, **kw):
     r = cfg['load']()
-    prepare(r, scale=kw.pop('scale', 1.0), lap_mode=kw.get('lap_mode', 'gnss'), t_cut=cfg['cut'], ksrc=kw.pop('ksrc', 'imu'))
-    o = decompose(r, zones=nav_zones(r), **kw)
+    prepare(r, scale=kw.pop('scale', SCALE), lap_mode=kw.get('lap_mode', 'gnss'), t_cut=cfg['cut'], ksrc=kw.pop('ksrc', 'imu'))
+    bounds = [t for w in nav_windows(r) for t in w[:2]]
+    o = decompose(r, zones=nav_zones(r), bounds=bounds, **kw)
     return r, o
 
 
@@ -113,16 +123,16 @@ def main():
 
     P('# ラップタイム内訳 (decomp)\n')
     P('T_lap = T_phys + ΔT_cap + ΔT_path + ΔT_plan + ΔT_track + ΔT_stop + ΔT_res　(T_ref = T_phys + ΔT_cap)。単位 s、符号付き (+ は時間の増加)。\n')
-    P('- T_phys: 走行軌跡に物理限界 (v≤6.0 m/s [従動輪シミー限界], a_acc=3.4, a_dec=3.6 m/s², a_y,max=6.0) のみを与えて前方・後方走査した所要時間')
-    P('- T_ref : T_phys に ソフトウェア上限 v_cap (R2 4.0, B1 4.5, R8 4.0, 10/12 4.0 m/s) を加えた所要時間。ΔT_cap = T_ref − T_phys')
-    P('- ΔT_plan = T_plan,driven − T_ref (T_plan,driven: a_y=3.0, a_x=3.0 [10/12 は記録上 6.0], v_cap)')
+    P('- T_phys: 走行軌跡に物理限界 (v≤6.0 m/s [従動輪シミー限界], a_acc=3.4, a_dec=4.0 m/s² [暫定], a_y,max=6.0) のみを与えて前方・後方走査した所要時間')
+    P('- T_ref : T_phys に ソフトウェア上限 v_cap (R1 4.0, B1 4.5 m/s) を加えた所要時間。ΔT_cap = T_ref − T_phys')
+    P('- ΔT_plan = T_plan,driven − T_ref (T_plan,driven: a_y=3.0, a_x=3.0, v_cap)')
     P('- ΔT_path = T_plan,rec − T_plan,driven (T_plan,rec: speed_path の 0.3 s プレビュー点の速度, 停止窓は窓直前の計画速度 v_b で置換)')
     P('- ΔT_track = 実経過時間 − T_plan,rec (停止窓を除く)。ΔT_stop = 窓の実経過時間 − 窓内距離/v_b。ΔT_res = T_lap − Σ。\n')
 
     # ------------------------------------------------------------- 0
     P('## 0. 解析対象と前提\n')
-    P('| run | 内容 | v_cap [m/s] | a_x,plan [m/s²] | 解析範囲 [s] (bag 先頭=0) | 解析周回 | 周回の終端 |')
-    P('|---|---|---|---|---|---|---|')
+    P('| run | 内容 | v_cap [m/s] | a_x,plan [m/s²] | 自律区間 [s] (bag 先頭=0) | 解析範囲 [s] | 解析周回 | 周回の終端 |')
+    P('|---|---|---|---|---|---|---|---|')
     for cfg in RUNS:
         r, o = res[cfg['label']]
         nl = o['nlap']
@@ -131,13 +141,27 @@ def main():
         frac = [(o['s_edges'][i + 1] - o['s_edges'][i]) / L for i in range(nl)]
         lt = o['laps_t']
         end = '3 周とも GNSS 基準線を通過' if full == 3 else f'{full} 周完了 + 第{nl}周は部分 (周長の {frac[-1] * 100:.0f}%, t={lt[-1]:.1f}s で打切り)'
-        P(f"| {cfg['label']} | {cfg['desc']} | {r.vcap} | {r.ax_plan} | {lt[0]:.1f} – {lt[-1]:.1f} | {nl} | {end} |")
+        P(f"| {cfg['label']} | {cfg['desc']} | {r.vcap} | {r.ax_plan} | {r.ta:.1f} – {r.tb:.1f} | {lt[0]:.1f} – {lt[-1]:.1f} | {nl} | {end} |")
     P('')
-    P('打切りの理由: B1 は t=181.2 s に /autonomous=False (基準線の約 7 m 手前, v=4.35 m/s) で手動介入・制動。10/12 は 3 周目の途中 (基準線から約 80 m 手前) で自律終了 (2 周 + 部分)。\n')
+    P('打切り: 解析範囲は「自律開始 → 3 周目の GNSS 基準線通過 (3 周に満たなければ自律終了または打切り時刻)」。B1 は t=181.2 s に /autonomous=False となり (基準線の約 7 m 手前, v=4.35 m/s) 手動で制動したため、その時刻で打切る (第 3 周は部分周)。\n')
+    P('自律区間と解析範囲の関係:\n')
+    P('| run | 自律区間の長さ [s] | 自律区間の走行距離 [m] (車輪速) | 最後の基準線通過 [s] | 通過までの距離 [m] | 通過後の自律区間 [s] | 通過後の走行距離 [m] | 通過後の距離 / 周長 | 自律区間の周回数 (走行距離/周長) | 通過後の平均速度 [m/s] |')
+    P('|---|---|---|---|---|---|---|---|---|---|')
+    for cfg in RUNS:
+        r, o = res[cfg['label']]
+        full = len(r.edges_gnss)
+        L = o['s_edges'][full] / full
+        s_tb = float(r.s_of_t(r.tb))
+        te = r.edges_all[-1]
+        s_e = float(r.s_of_t(te))
+        post_t = r.tb - te
+        post_s = s_tb - s_e
+        P(f"| {cfg['label']} | {r.tb - r.ta:.1f} | {s_tb:.1f} | {te:.1f} | {s_e:.1f} | {post_t:.1f} | {post_s:.1f} | {post_s / L:.2f} | {s_tb / L:.2f} | {post_s / max(post_t, 1e-9):.2f} |")
+    P('')
 
     # ------------------------------------------------------------- 1 ラップ長
     P('## 1. ラップごとの実測ラップタイムとラップ長 (GNSS 基準線通過)\n')
-    P('基準線 = 自律開始点を通り、開始後 3〜12 m の進行方向に直交する直線。通過時刻は GNSS 20 Hz を線形補間。ラップ長は 3 方式: chassis 車輪速積算 (R=0.124)、GNSS 折れ線長 (生 / 5 点移動平均 / 20 点移動平均)、odom 折れ線長。\n')
+    P('基準線 = 自律開始点を通り、開始後 3〜12 m の進行方向に直交する直線。通過時刻は GNSS 20 Hz を線形補間。ラップ長は 3 方式: chassis 車輪速積算 (R=0.1265 m, 記録の 0.124 m 換算 ×1.0202)、GNSS 折れ線長 (生 / 5 点移動平均 / 20 点移動平均)、odom 折れ線長。\n')
     P('| run | 周 | 通過時刻 [s] | ラップタイム [s] | 車輪速積算 [m] | GNSS 生 [m] | GNSS 5点平滑 [m] | GNSS 20点平滑 [m] | odom [m] | 備考 |')
     P('|---|---|---|---|---|---|---|---|---|---|')
     ll = {}
@@ -153,13 +177,11 @@ def main():
                 note = (note + ' 静止発進から').strip()
             P(f"| {cfg['label']} | {x['lap']} | {x['t1']:.1f} | {x['T']:.2f} | {x['wheel']:.1f} | {x['gnss_raw']:.1f} | {x['gnss_sm']:.1f} | {x['gnss_sm20']:.1f} | {x['odom']:.1f} | {note} |")
             csvs['laplen'].append([cfg['label'], x['lap'], round(x['t1'], 2), round(x['T'], 3), round(x['wheel'], 2), round(x['gnss_raw'], 2), round(x['gnss_sm'], 2), round(x['gnss_sm20'], 2), round(x['odom'], 2), int(x['cut'])])
-        if cfg['label'] == 'R1012':
-            P("| R1012 | 3 | — | — | — | — | — | — | — | 基準線へ戻らず (2 周 + 部分周) |")
     P('')
     P('コース周長 (完走した周の平均):\n')
     P('| コース | run | 周 | 車輪速 [m] | GNSS 5点平滑 [m] | GNSS 20点平滑 [m] | odom [m] |')
     P('|---|---|---|---|---|---|---|')
-    for course, labs in (('赤', ['R2', 'R8', 'R1012']), ('青', ['B1'])):
+    for course, labs in (('赤', ['R1']), ('青', ['B1'])):
         allv = []
         for lab in labs:
             r, o = res[lab]
@@ -276,7 +298,6 @@ def main():
         if wr:
             P(f"| {cfg['label']} | 計 | | | | {sum(w['dur'] for w in wr):.1f} | {sum(w['dist'] for w in wr):.1f} | | {sum(w['nominal'] for w in wr):.2f} | {sum(w['dwell'] for w in wr):.1f} | | **{sum(w['dT_stop'] for w in wr):+.2f}** (表2 ΔT_stop {o['agg']['total']['stop']:+.2f}) |")
     P('')
-    P('R1012 #4 は stop_point が 1 回だけ発行されたが減速は起きていない (最小速度 3.79 m/s)。損失は +0.03 s で無視できる。\n')
     P('B1 は stop_point 自体が記録されていない (信号停止なし) ため窓なし (ΔT_stop = 0)。\n')
 
     # ------------------------------------------------------------- 7 B1 交差点
@@ -303,6 +324,58 @@ def main():
         for nm, mk in (('v_rec≈4.0 (上限が 4.5→4.0 へ下がった区間)', z & flat), ('v_rec<3.95 (曲率・加減速による低下)', z & (vrec < 3.95)), ('v_rec>4.05', z & (vrec > 4.05))):
             P(f"| {nm} | {c['ds'][mk].sum():.1f} | {f(float(c['path'][mk].sum()))} | {f(float(c['plan'][mk].sum()))} | {f(float(c['track'][mk].sum()))} |")
         P('')
+
+        # ---- nav_cmd が straight 以外の区間そのものでの、分岐の速度抑制 (上限 4.5→4.0 m/s) への帰属
+        P('### 7.1 指示が直進以外の区間 (nav_cmd が left/right) で計画速度が 4.0 m/s に張り付いていた距離とその時間差\n')
+        P('計画速度が張り付いた = そのセルの記録計画速度 v_rec (= ds / T_plan,rec) が 3.95〜4.05 m/s。時間差 = そのセルの ΔT_path (= T_plan,rec − T_plan,driven, v_cap=4.5 の計画との差)。'
+          '名目値 = 距離 × (1/4.0 − 1/4.5) は加減速を無視した上限。\n')
+        Smono = rB.s_t + 1e-9 * rB.tv
+        Sx = lambda t: float(np.interp(t, rB.tv, Smono))
+        mid = oB['mid']
+        nz = np.zeros(len(mid), bool)
+        P('| # | 周 | 指示 | 開始 [s] | 終了 [s] | 距離 [m] | v_rec≈4.0 の距離 [m] | その ΔT_path [s] | 名目値 [s] | 窓内 ΔT_path 全体 [s] | v_meas 平均 [m/s] | v_rec 平均 [m/s] |')
+        P('|---|---|---|---|---|---|---|---|---|---|---|---|')
+        tot = dict(dist=0.0, pin=0.0, dtp=0.0, dtall=0.0)
+        bycmd = {}
+        csv_b = []
+        for i, (t0, t1, cmd) in enumerate(nav_windows(rB)):
+            if t0 >= oB['laps_t'][-1]:
+                continue
+            mk = (mid > Sx(t0)) & (mid < Sx(t1))
+            pin = mk & flat
+            lapk = int(np.searchsorted(oB['laps_t'], t0, side='right'))
+            dist = float(c['ds'][mk].sum())
+            pd_ = float(c['ds'][pin].sum())
+            dtp = float(c['path'][pin].sum())
+            dta = float(c['path'][mk].sum())
+            nom = pd_ * (1 / 4.0 - 1 / 4.5)
+            mm = (rB.tv >= t0) & (rB.tv <= t1)
+            vmean = float(rB.vs[mm].mean())
+            vrmean = dist / float(c['rec'][mk].sum())
+            P(f"| {i + 1} | {lapk} | {cmd} | {t0:.1f} | {t1:.1f} | {dist:.1f} | {pd_:.1f} | {f(dtp)} | {nom:+.2f} | {f(dta)} | {vmean:.2f} | {vrmean:.2f} |")
+            csv_b.append([i + 1, lapk, cmd, round(t0, 2), round(t1, 2), round(dist, 2), round(pd_, 2), round(dtp, 4), round(nom, 4), round(dta, 4), round(vmean, 3), round(vrmean, 3)])
+            tot['dist'] += dist; tot['pin'] += pd_; tot['dtp'] += dtp; tot['dtall'] += dta
+            b_ = bycmd.setdefault(cmd, dict(dist=0.0, pin=0.0, dtp=0.0, n=0))
+            b_['dist'] += dist; b_['pin'] += pd_; b_['dtp'] += dtp; b_['n'] += 1
+        P(f"| 計 | | | | | {tot['dist']:.1f} | {tot['pin']:.1f} | **{f(tot['dtp'])}** | {tot['pin'] * (1 / 4.0 - 1 / 4.5):+.2f} | {f(tot['dtall'])} | | |")
+        P('')
+        P('指示別: ' + ', '.join(f"{k} {v['n']} 回, 距離 {v['dist']:.1f} m, 張り付き {v['pin']:.1f} m, ΔT_path {f(v['dtp'])} s" for k, v in bycmd.items()) + '\n')
+        nwin = np.zeros(len(mid), bool)
+        for t0, t1, _ in nav_windows(rB):
+            nwin |= (mid > Sx(t0)) & (mid < Sx(t1))
+        out_pin = flat & ~nwin
+        P(f"指示が straight の区間 (窓の外) で v_rec≈4.0 だった距離: {float(c['ds'][out_pin].sum()):.1f} m (ΔT_path {f(float(c['path'][out_pin].sum()))} s)。"
+          f"うち 7 節ゾーン (窓の間と直後 20 s を含む) 内: {float(c['ds'][out_pin & z].sum()):.1f} m。\n")
+        P(f"B1 全体 (解析範囲 {float(c['ds'].sum()):.1f} m) の v_rec≈4.0 の距離: {float(c['ds'][flat].sum()):.1f} m、ΔT_path 全体 {f(float(c['path'].sum()))} s。\n")
+        with open(os.path.join(OUT, 'decomp_branch_summary.csv'), 'w', newline='') as fh:
+            w_ = csv.writer(fh)
+            w_.writerow(['out_of_window_pinned_dist_m', 'out_of_window_pinned_dT_path', 'zone_pinned_dist_m', 'zone_pinned_dT_path', 'zone_dist_m', 'zone_dT_path', 'all_pinned_dist_m', 'all_dT_path', 'run_dist_m'])
+            w_.writerow([round(float(c['ds'][out_pin].sum()), 3), round(float(c['path'][out_pin].sum()), 4), round(float(c['ds'][z & flat].sum()), 3), round(float(c['path'][z & flat].sum()), 4),
+                         round(float(c['ds'][z].sum()), 3), round(float(c['path'][z].sum()), 4), round(float(c['ds'][flat].sum()), 3), round(float(c['path'].sum()), 4), round(float(c['ds'].sum()), 3)])
+        with open(os.path.join(OUT, 'decomp_branch.csv'), 'w', newline='') as fh:
+            w_ = csv.writer(fh)
+            w_.writerow(['idx', 'lap', 'cmd', 't0', 't1', 'dist_m', 'pinned_dist_m', 'pinned_dT_path', 'nominal_s', 'window_dT_path', 'v_meas_mean', 'v_rec_mean'])
+            w_.writerows(csv_b)
 
     # ------------------------------------------------------------- 8 感度
     P('## 8. 感度解析 (走行ごとの合計)\n')
@@ -335,11 +408,8 @@ def main():
         for lm, nm in (('3m', '開始点から 3 m 以内'), ('dist', '走行距離で等分')):
             r, o = build(cfg, lap_mode=lm)
             add('周回の切り方', nm, lab, o['agg']['total'])
-        r, o = build(cfg, scale=WHEEL_R_TRUE / WHEEL_R_CFG)
-        add('車輪実効半径 0.1265 (距離・速度 ×1.0202)', 'scale=1.0202', lab, o['agg']['total'])
-        if lab == 'R1012':
-            r, o = build(cfg, ax_plan=3.0)
-            add('a_x,plan', 'a_x,plan=3.0 (記録は 6.0)', lab, o['agg']['total'])
+        r, o = build(cfg, scale=1.0)
+        add('車輪半径 (既定 0.1265 m)', '0.124 m (設定値, 換算 ×1.0)', lab, o['agg']['total'])
     P('| 条件 | run | 設定 | ' + ' | '.join(NAMES) + ' |')
     P('|---|---|---|' + '---|' * len(NAMES))
     for g, nm, lab, a in sens:
@@ -349,7 +419,7 @@ def main():
     # ------------------------------------------------------------- 9 κ 方式比較
     P('## 9. 曲率の算出方式 (ω_z/v, odom 微分, GNSS 微分) の一致度\n')
     P('ベース: IMU(VectorNav, 20 Hz) の ω_z を車輪速 v (>0.5 m/s) で割り κ_k=ω_z/v を走行距離 s の点列にし、0.1 m グリッドへ線形補間後 σ=1.0 m のガウス平滑 (σ=1.5 m は直線/カーブ判定用)。'
-      'odom/GNSS 方式は x,y をガウス平滑 (σ_t=0.25 s / 0.5 s) し、進行方位 ψ=atan2(dy,dx) を s で微分。符号は相関の符号に合わせて比較 (全 run で正相関 = 同符号)。R1012 の odom 微分は発進直後 (s=0〜2 m と 3 回目停止後) の速度ベクトル回転で破綻するため相関が低い (その区間を除くと 0.989)。\n')
+      'odom/GNSS 方式は x,y をガウス平滑 (σ_t=0.25 s / 0.5 s) し、進行方位 ψ=atan2(dy,dx) を s で微分。符号は相関の符号に合わせて比較 (全 run で正相関 = 同符号)。\n')
     P('| run | 比較 | 符号付き相関 | RMS 差 [1/m] | |κ|>0.04 の距離一致率 [%] | 周回ごとの Σκ ds (ω/v) [rad] |')
     P('|---|---|---|---|---|---|')
     for cfg in RUNS:
@@ -404,7 +474,7 @@ def main():
             vcap=r.vcap, tv=r.tv, vs=r.vs, tg20=r.tg20, vprev=r.vprev, vnear=r.vnear, s20=r.s20, vm20=r.vm20,
             ta=r.ta, laps_t=o['laps_t'], s_edges=o['s_edges'], grid=o['grid'], v_ref=o['v_ref'], v_pd=o['v_pd'],
             v_phys=o['v_phys'], kap=o['kap'], wins=o['wins'], agg=o['agg'], nlap=o['nlap'], stop_t=r.stop_t, s_t=r.s_t)
-    pickle.dump(keep, open(os.path.join(OUT, 'decomp_results.pkl'), 'wb'))
+    pickle.dump(keep, open(os.path.join(SCRATCH, 'decomp_results.pkl'), 'wb'))
     print('\n'.join(md))
 
 

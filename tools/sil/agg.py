@@ -8,7 +8,7 @@ CSVNAME = {'base': 'baseline', 'A3': 'A3', 'A4': 'A4', 'A5': 'A5', 'A7': 'A7', '
 ORDER = ['base', 'A3', 'A4', 'A5', 'A45', 'A7', 'A8e', 'A8', 'A8d']
 SPEEDS = [40, 55, 70]
 rows = []
-for f in sorted(glob.glob(ROOT + '/res/*_aux.pkl')):
+for f in sorted(glob.glob(RES + '/*_aux.pkl')):
     tag = os.path.basename(f)[:-8]
     m = re.match(r'^(base|A\d+[de5]?)_(red|blue)_v(\d+)_s(\d+)$', tag)
     if not m: continue
@@ -29,7 +29,7 @@ for (cond, course, v), g in itertools.groupby(sorted(rows, key=lambda r: (r['con
     tab[(cond, course, v)] = agg(list(g))
 # stop test
 stop = {}
-for f in sorted(glob.glob(ROOT + '/res/stop*_aux.pkl')):
+for f in sorted(glob.glob(RES + '/stop*_aux.pkl')):
     tag = os.path.basename(f)[:-8]; m = re.match(r'^stop(base|A2)_red_v(\d+)_s(\d+)$', tag)
     if not m: continue
     L, A = load(tag); c = CRS['red']; t = L[:, 0]; v = L[:, 3]; s = L[:, 8]
@@ -40,7 +40,7 @@ for f in sorted(glob.glob(ROOT + '/res/stop*_aux.pkl')):
     # 停止を要求した減速の最大(参考): 停止線の手前で最小速度
     stop.setdefault((m.group(1), int(m.group(2))), []).append(dict(seed=int(m.group(3)), ov=ov, stopped=stopped, maxe=float(np.abs(L[:, 7]).max()), vline=float(np.interp(line, s, v)) if s.max() > line else np.nan, v_pyl=float(np.interp(136.0, s, v)) if s.max() > 136.0 else np.nan, lag=A['lag_min']))
 def fmt(a, d=1): return f"{a:.{d}f}"
-with open(ROOT + '/ablation.csv', 'w', newline='') as fh:
+with open(OUTD + '/ablation.csv', 'w', newline='') as fh:
     w = csv.writer(fh)
     w.writerow(['condition', 'course', 'vmax_mps', 'n_trials', 'n_completed', 'n_aborted_2p5m', 'lap2_mean_completed_s', 'lap2_sd_completed_s', 'lap2_mean_all_reached_s', 'max_lat_dev_mean_m', 'max_lat_dev_worst_m', 'p95_lat_dev_mean_m', 'v_mean_mps', 'ay_max_mean_mps2', 'grip_saturation_frac_mean', 'stop_overshoot_mean_m', 'seeds', 'min_realtime_lag_s'])
     for cond in ORDER:
@@ -52,7 +52,7 @@ with open(ROOT + '/ablation.csv', 'w', newline='') as fh:
     for (name, v), lst in sorted(stop.items()):
         ovs = [x['ov'] for x in lst if x['stopped']]
         w.writerow([('stoptest_' + name), 'red', v/10, len(lst), sum(x['stopped'] for x in lst), '', '', '', '', fmt(np.mean([x['maxe'] for x in lst]), 2), '', '', '', '', '', '' if not ovs else fmt(np.mean(ovs), 2), ' '.join(str(x['seed']) for x in lst), fmt(min(x['lag'] for x in lst), 3)])
-pickle.dump(dict(tab=tab, stop=stop), open(ROOT + '/agg.pkl', 'wb'))
+pickle.dump(dict(tab=tab, stop=stop), open(OUTD + '/agg.pkl', 'wb'))
 # markdown
 HEADER = """# 要素別比較（実装 SIL, 実 C++ ノード + Python 車両・知覚モデル）
 
@@ -94,7 +94,7 @@ for name, lab in [('base', '基準（stop_decel 1.5 / max 4.0）'), ('A2', 'A2 �
 # ---- 10/12 再現と要因分解
 def grp(pattern, label):
     rs = []
-    for f in sorted(glob.glob(ROOT + f'/res/{pattern}_aux.pkl')):
+    for f in sorted(glob.glob(RES + f'/{pattern}_aux.pkl')):
         tag = os.path.basename(f)[:-8]; rs.append(metrics(tag, 'red'))
     return (label, rs)
 G = [grp('rep1012_red_v40_s*', '10/12再現: 2次・合流15 m固定・a_x,max 6.0'),
@@ -114,11 +114,11 @@ if G:
         out.append(f"| {lab} | {len(rs)} | {a_['n_done']}/{len(rs)} | {lap} | {mm('maxe'):.2f} | {mm('gp35_p95'):.2f} | {mm('gp35_max'):.2f} | {mm('gp35_rms'):.2f} |")
     out.append("| 実車 10/12（赤 4.0 m/s、MPC、合流15 m固定） | 1走行 | 2.57周 | 68.5 | — | 0.57 | — | 0.27 |")
     out.append("\n横偏差の定義は実車解析(lane off)と同じ: /planner/global_path の x=0 での y（np.interp、最小xが1.5 mを超えるフレームは除外）の絶対値、車速3.5 m/s超のフレームのみ。ラップは2周目に到達した試行の平均（完走判定を満たさない試行を含む）。")
-    pickle.dump(G, open(ROOT + '/rep.pkl', 'wb'))
+    pickle.dump(G, open(OUTD + '/rep.pkl', 'wb'))
 # ---- 操舵時定数の感度
 sens = {}
 for cond, pat in [('0.17', 'base_blue'), ('0.44', 'sens044_blue')]:
-    for f in sorted(glob.glob(ROOT + f'/res/{pat}_v*_s*_aux.pkl')):
+    for f in sorted(glob.glob(RES + f'/{pat}_v*_s*_aux.pkl')):
         tag = os.path.basename(f)[:-8]; m = re.match(r'.*_v(\d+)_s(\d+)$', tag); v = int(m.group(1))
         if v not in (40, 55): continue
         sens.setdefault((cond, v), []).append(metrics(tag, 'blue'))
@@ -129,7 +129,7 @@ if sens:
     for (cond, v), rs in sorted(sens.items(), key=lambda kv: (kv[0][1], kv[0][0])):
         a = agg(rs); lap = '—' if np.isnan(a['lap_mean']) else f"{a['lap_mean']:.1f}±{a['lap_sd']:.1f}"
         out.append(f"| {cond} | {v/10:.1f} | {lap} | {a['n_done']}/{a['n']} | {a['maxe_mean']:.2f} ({a['maxe_max']:.2f}) | {a['e95_mean']:.3f} |")
-    pickle.dump({k: [dict(m) for m in v] for k, v in sens.items()}, open(ROOT + '/sens.pkl', 'wb'))
+    pickle.dump({k: [dict(m) for m in v] for k, v in sens.items()}, open(OUTD + '/sens.pkl', 'wb'))
 
-open(ROOT + '/ablation_table.md', 'w').write('\n'.join(out) + '\n')
+open(OUTD + '/ablation_table.md', 'w').write('\n'.join(out) + '\n')
 print('\n'.join(out))

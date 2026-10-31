@@ -1,16 +1,14 @@
-"""追加解析: (1) 車輪半径 0.1265 m 較正 (距離・速度 ×1.0202) での全内訳  (2) 停止窓の終端しきい値スイープ。
-出力: decomp_totals_r1265.csv, decomp_segments_r1265.csv, decomp_table_r1265.md,
-      decomp_results_r1265.pkl, /home/kyo/master_thesis/images/decomp_4ms_r1265.png
+"""車輪半径の感度 (図なし): 既定の同定値 0.1265 m と、記録の設定値 0.124 m (換算 ×1.0) の比較。
+ (1) 全項 (T_lap, T_phys, ΔT_cap, ΔT_plan, ΔT_path, ΔT_track, ΔT_stop) の合計・1 周あたり・周ごとの差
+ (2) 停止窓の終端判定しきい値 (v_meas の 0.3 s 移動平均 ≥ しきい値 × v_b) と ΔT_track / ΔT_stop (両半径)
+出力: decomp_table_r1265.md, decomp_radius_compare.csv, decomp_track_r1265.csv, decomp_end_threshold_sweep.csv
 """
 import csv
 import os
-import pickle
-import numpy as np
-from decomp import *   # noqa: F401,F403  (RUNS, build, KEYS, NAMES, rowvals, f, LEVEL ...)
-import decomp_figs as F
+from decomp import *   # noqa: F401,F403  (RUNS, build, KEYS, f, SCALE ...)
 
-SC = WHEEL_R_TRUE / WHEEL_R_CFG
-OUT = SCRATCH
+THR = (0.90, 0.92, 0.94, 0.95, 0.96, 0.98)
+TERMS = [('T_lap', 'T_lap'), ('phys', 'T_phys'), ('cap', 'ΔT_cap'), ('plan', 'ΔT_plan'), ('path', 'ΔT_path'), ('track', 'ΔT_track'), ('stop', 'ΔT_stop')]
 
 
 def lap_len(r, o):
@@ -19,184 +17,108 @@ def lap_len(r, o):
 
 
 def main():
-    base, cal = {}, {}
-    for cfg in RUNS:
-        base[cfg['label']] = build(cfg)
-        cal[cfg['label']] = build(cfg, scale=SC)
-
-    md, P = [], None
+    new = {c['label']: build(c) for c in RUNS}                 # 0.1265 m (既定)
+    old = {c['label']: build(c, scale=1.0) for c in RUNS}      # 0.124 m (設定値)
     md = []
     P = md.append
-    P(f'# 車輪半径較正 (0.124 → 0.1265 m, 距離・速度 ×{SC:.4f}) での内訳\n')
-    P('v_meas と s は車輪速 ×1.0202 に置換。T_phys / T_ref / T_plan,driven の物理限界と v_cap は変更せず、v_plan,rec は記録値そのまま。'
-      'ラップ境界 (GNSS 基準線通過時刻) と stop_point 窓の開始は不変で、窓の終端判定と κ=ω/v は較正後の v で再計算。\n')
+    csv_all, csv_track = [], []
 
-    csv_tot, csv_seg, csv_lap = [], [], []
+    P(f'# 車輪半径の感度: 0.1265 m (同定値, 既定) と 0.124 m (設定値) の比較 (換算係数 ×{SCALE:.4f})\n')
+    P('既定の 0.1265 m は記録の車輪速 (0.124 m 換算) を ×1.0202 して距離・速度とする。物理限界・v_cap・v_plan,rec の記録値は変えない。'
+      'ラップ境界 (GNSS 基準線通過時刻) と stop_point 窓の開始は不変で、窓の終端判定と κ=ω/v は換算後の v で再計算した。'
+      '車輪速が 2.02% 大きくなると v_meas ≥ v_plan,rec の区間が増え、ΔT_track が減る (換算差)。ΔT_track + ΔT_stop は窓の境界の取り方に依らない。\n')
 
-    # ---- 1. 走行ごと (合計)
-    P('## 1. 走行ごとの内訳 (解析範囲の合計、s)\n')
-    P('| run | 距離 [m] | 周回数(周長比) | ' + ' | '.join(NAMES) + ' |')
-    P('|---|---|---|' + '---|' * len(NAMES))
-    for cfg in RUNS:
-        lab = cfg['label']
-        r, o = cal[lab]
-        a = o['agg']['total']
-        P(f"| {lab} | {a['ds']:.1f} | {a['ds'] / lap_len(r, o):.2f} | " + ' | '.join(rowvals(a)) + ' |')
-        csv_tot.append([lab, 'total', round(a['ds'], 2), round(a['ds'] / lap_len(r, o), 3)] + [round(a[k], 4) for k in KEYS])
-    P('')
-    P('T_lap に対する割合 [%]:\n')
-    P('| run | T_phys | ΔT_cap | T_ref | ΔT_path | ΔT_plan | ΔT_track | ΔT_stop |')
-    P('|---|---|---|---|---|---|---|---|')
-    for cfg in RUNS:
-        a = cal[cfg['label']][1]['agg']['total']
-        P(f"| {cfg['label']} | " + ' | '.join(f"{100 * a[k] / a['T_lap']:+.1f}" for k in ('phys', 'cap', 'ref', 'path', 'plan', 'track', 'stop')) + ' |')
+    P('## 1. 全項の差 (合計, 単位 s。差 = 0.1265 − 0.124)\n')
+    P('| run | 項 | 0.1265 (既定) | 0.124 | 差 |')
+    P('|---|---|---|---|---|')
+    for c in RUNS:
+        lab = c['label']
+        a1, a0 = new[lab][1]['agg']['total'], old[lab][1]['agg']['total']
+        for k, nm in TERMS:
+            P(f"| {lab} | {nm} | {a1[k]:.2f} | {a0[k]:.2f} | {a1[k] - a0[k]:+.2f} |")
+            csv_all.append([lab, 'total', nm, round(a1[k], 4), round(a0[k], 4), round(a1[k] - a0[k], 4)])
+        P(f"| {lab} | 距離 [m] | {a1['ds']:.1f} | {a0['ds']:.1f} | {a1['ds'] - a0['ds']:+.1f} |")
+        P(f"| {lab} | 周長 [m] | {lap_len(*new[lab]):.1f} | {lap_len(*old[lab]):.1f} | {lap_len(*new[lab]) - lap_len(*old[lab]):+.1f} |")
+        csv_track.append([lab, 'total', round(a0['ds'], 2), round(a1['ds'], 2), round(a0['track'], 4), round(a1['track'], 4), round(a1['track'] - a0['track'], 4), round(a0['stop'], 4), round(a1['stop'], 4)])
     P('')
 
-    # ---- 2. 1 周あたり
-    P('## 2. 1 周あたり (合計 / 周回数(周長比))\n')
-    P('| run | 周長 [m] | T_lap | T_phys | ΔT_cap | T_ref | ΔT_path | ΔT_plan | ΔT_track | ΔT_stop |')
-    P('|---|---|---|---|---|---|---|---|---|---|')
-    for cfg in RUNS:
-        lab = cfg['label']
-        r, o = cal[lab]
-        a = o['agg']['total']
-        L = lap_len(r, o)
-        n = a['ds'] / L
-        P(f"| {lab} | {L:.1f} | " + ' | '.join(f"{a[k] / n:.2f}" if k in LEVEL else f(a[k] / n) for k in KEYS[:-1]) + ' |')
-        csv_tot.append([lab, 'per_lap', round(L, 2), round(n, 3)] + [round(a[k] / n, 4) for k in KEYS])
+    P('## 2. 1 周あたり (合計 / 周回数。差 = 0.1265 − 0.124)\n')
+    P('| run | 項 | 0.1265 (既定) | 0.124 | 差 |')
+    P('|---|---|---|---|---|')
+    for c in RUNS:
+        lab = c['label']
+        r1, o1 = new[lab]
+        r0, o0 = old[lab]
+        a1, a0 = o1['agg']['total'], o0['agg']['total']
+        n1, n0 = a1['ds'] / lap_len(r1, o1), a0['ds'] / lap_len(r0, o0)
+        for k, nm in TERMS:
+            P(f"| {lab} | {nm} | {a1[k] / n1:.2f} | {a0[k] / n0:.2f} | {a1[k] / n1 - a0[k] / n0:+.2f} |")
+            csv_all.append([lab, 'per_lap', nm, round(a1[k] / n1, 4), round(a0[k] / n0, 4), round(a1[k] / n1 - a0[k] / n0, 4)])
+        csv_track.append([lab, 'per_lap', round(lap_len(r0, o0), 2), round(lap_len(r1, o1), 2), round(a0['track'] / n0, 4), round(a1['track'] / n1, 4), round(a1['track'] / n1 - a0['track'] / n0, 4), round(a0['stop'] / n0, 4), round(a1['stop'] / n1, 4)])
     P('')
 
-    # ---- 3. ラップごと
-    P('## 3. ラップごと\n')
-    P('| run | lap | 距離 [m] | ' + ' | '.join(NAMES) + ' |')
-    P('|---|---|---|' + '---|' * len(NAMES))
-    for cfg in RUNS:
-        lab = cfg['label']
-        r, o = cal[lab]
-        for k in range(o['nlap']):
-            a = o['agg'][f'lap{k + 1}']
-            part = '' if k < len(r.edges_gnss) else ' (部分)'
-            P(f"| {lab} | {k + 1}{part} | {a['ds']:.1f} | " + ' | '.join(rowvals(a)) + ' |')
-            csv_lap.append([lab, k + 1, round(a['ds'], 2)] + [round(a[kk], 4) for kk in KEYS])
+    P('## 3. ΔT_track の周ごと\n')
+    P('| run | 周 | ΔT_track (0.1265) [s] | ΔT_track (0.124) [s] | 差 [s] |')
+    P('|---|---|---|---|---|')
+    for c in RUNS:
+        lab = c['label']
+        for k in range(new[lab][1]['nlap']):
+            t1 = new[lab][1]['agg'][f'lap{k + 1}']['track']
+            t0 = old[lab][1]['agg'][f'lap{k + 1}']['track']
+            part = ' (部分)' if k >= len(new[lab][0].edges_gnss) else ''
+            P(f"| {lab} | {k + 1}{part} | {f(t1)} | {f(t0)} | {f(t1 - t0)} |")
+            csv_track.append([lab, f'lap{k + 1}', '', '', round(t0, 4), round(t1, 4), round(t1 - t0, 4), '', ''])
     P('')
 
-    # ---- 4. 直線/カーブ
-    P('## 4. 区間別 (直線 / カーブ。|κ|>0.04 をカーブ、κ=ω/(1.0202·v_wheel))\n')
-    P('合計:\n')
-    P('| run | 区間 | 距離 [m] | ' + ' | '.join(NAMES) + ' |')
-    P('|---|---|---|' + '---|' * len(NAMES))
-    for cfg in RUNS:
-        lab = cfg['label']
-        r, o = cal[lab]
-        for sec, nm in (('straight', '直線'), ('curve', 'カーブ')):
-            a = o['agg'][sec]
-            P(f"| {lab} | {nm} | {a['ds']:.1f} | " + ' | '.join(rowvals(a)) + ' |')
-            csv_seg.append([lab, sec, 'total', round(a['ds'], 2)] + [round(a[kk], 4) for kk in KEYS])
-        for k in range(o['nlap']):
-            for sec in ('straight', 'curve'):
-                a = o['agg'][f'lap{k + 1}_{sec}']
-                csv_seg.append([lab, sec, k + 1, round(a['ds'], 2)] + [round(a[kk], 4) for kk in KEYS])
-    P('')
-    P('1 周あたり (合計 / 周回数(周長比)):\n')
-    P('| run | 区間 | 距離 [m/周] | T_lap | T_phys | ΔT_cap | T_ref | ΔT_path | ΔT_plan | ΔT_track | ΔT_stop |')
-    P('|---|---|---|---|---|---|---|---|---|---|---|')
-    for cfg in RUNS:
-        lab = cfg['label']
-        r, o = cal[lab]
-        n = o['agg']['total']['ds'] / lap_len(r, o)
-        for sec, nm in (('straight', '直線'), ('curve', 'カーブ')):
-            a = o['agg'][sec]
-            P(f"| {lab} | {nm} | {a['ds'] / n:.1f} | " + ' | '.join(f"{a[k] / n:.2f}" if k in LEVEL else f(a[k] / n) for k in KEYS[:-1]) + ' |')
-            csv_seg.append([lab, sec, 'per_lap', round(a['ds'] / n, 2)] + [round(a[kk] / n, 4) for kk in KEYS])
-    P('')
-
-    # ---- 5. 較正前後の比較
-    P('## 5. 較正前 (0.124) と較正後 (0.1265) の比較 (合計、s)\n')
-    P('| run | 較正 | T_lap | T_phys | ΔT_cap | T_ref | ΔT_path | ΔT_plan | ΔT_track | ΔT_stop |')
-    P('|---|---|---|---|---|---|---|---|---|---|')
-    for cfg in RUNS:
-        lab = cfg['label']
-        for nm, d in (('0.124', base), ('0.1265', cal)):
-            a = d[lab][1]['agg']['total']
-            P(f"| {lab} | {nm} | " + ' | '.join(f"{a[k]:.2f}" if k in LEVEL else f(a[k]) for k in KEYS[:-1]) + ' |')
-        a0, a1 = base[lab][1]['agg']['total'], cal[lab][1]['agg']['total']
-        P(f"| {lab} | 差 | " + ' | '.join(f(a1[k] - a0[k]) for k in KEYS[:-1]) + ' |')
-    P('')
-    P('T_lap に対する割合の変化 [%] (較正前 → 較正後):\n')
-    P('| run | T_phys | ΔT_cap | ΔT_path | ΔT_plan | ΔT_track | ΔT_stop |')
-    P('|---|---|---|---|---|---|---|')
-    for cfg in RUNS:
-        lab = cfg['label']
-        a0, a1 = base[lab][1]['agg']['total'], cal[lab][1]['agg']['total']
-        P(f"| {lab} | " + ' | '.join(f"{100 * a0[k] / a0['T_lap']:.1f} → {100 * a1[k] / a1['T_lap']:.1f}" for k in ('phys', 'cap', 'path', 'plan', 'track', 'stop')) + ' |')
-    P('')
-    P('ラップ長 (車輪速積算): 較正前 → 較正後 [m]: ' + ', '.join(
-        f"{c['label']} {lap_len(*base[c['label']]):.1f} → {lap_len(*cal[c['label']]):.1f}" for c in RUNS) + ' (GNSS 5 点平滑は赤 261.1 / 青 257.5)\n')
-
-    # ---- 6. 停止窓の終端しきい値
-    P('## 6. 停止窓の終端判定しきい値 (v_meas の 0.3 s 移動平均 ≥ しきい値 × v_b) と ΔT_track / ΔT_stop\n')
-    P('ΔT_track + ΔT_stop は窓の境界に依らずほぼ一定 (窓内の時間が 2 項の間で移るだけ)。0.95 は既定値。\n')
-    THR = (0.90, 0.92, 0.94, 0.95, 0.96)
+    P('## 4. 停止窓の終端判定しきい値 (v_meas の 0.3 s 移動平均 ≥ しきい値 × v_b) と ΔT_track / ΔT_stop\n')
+    P('ΔT_track + ΔT_stop は窓の境界に依らずほぼ一定 (窓内の時間が 2 項の間で移るだけ)。0.95 は既定値。ΔT_stop は窓の実経過時間 − 窓内距離 / v_b。\n')
     sw_rows = []
-    for tag, scale in (('較正前 (0.124)', 1.0), ('較正後 (0.1265)', SC)):
-        P(f'### {tag}\n')
-        P('| run | しきい値 | ΔT_track | ΔT_stop | ΔT_track+ΔT_stop | 窓数 | 窓の継続の合計 [s] |')
-        P('|---|---|---|---|---|---|---|')
-        for cfg in RUNS:
-            lab = cfg['label']
+    for tag, scale in (('0.1265 m', SCALE), ('0.124 m', 1.0)):
+        P(f'### 車輪半径 {tag}{" (既定)" if scale != 1.0 else ""}\n')
+        P('| run | しきい値 | ΔT_track [s] | ΔT_stop [s] | ΔT_track+ΔT_stop [s] | 窓数 | 窓の継続の合計 [s] | 窓内距離の合計 [m] |')
+        P('|---|---|---|---|---|---|---|---|')
+        for c in RUNS:
+            lab = c['label']
             if lab == 'B1':
                 continue
             for th in THR:
-                r, o = build(cfg, scale=scale, end_frac=th)
+                r, o = build(c, scale=scale, end_frac=th)
                 a = o['agg']['total']
                 wl = o['agg']['windows']
-                P(f"| {lab} | {th:.2f}{' (既定)' if th == 0.95 else ''} | {f(a['track'])} | {f(a['stop'])} | {f(a['track'] + a['stop'])} | {len(wl)} | {sum(w['dur'] for w in wl):.1f} |")
+                P(f"| {lab} | {th:.2f}{' (既定)' if th == 0.95 else ''} | {f(a['track'])} | {f(a['stop'])} | {f(a['track'] + a['stop'])} | {len(wl)} | {sum(w['dur'] for w in wl):.1f} | {sum(w['dist'] for w in wl):.1f} |")
                 sw_rows.append([tag, lab, th, round(a['track'], 4), round(a['stop'], 4), round(a['track'] + a['stop'], 4), len(wl), round(sum(w['dur'] for w in wl), 2)])
         P('')
-    P('窓ごとの ΔT_stop [s] (較正前):\n')
+    P('窓ごとの ΔT_stop [s] (車輪半径 0.1265 m):\n')
     P('| run | # | ' + ' | '.join(f'{t:.2f}' for t in THR) + ' |')
     P('|---|---|' + '---|' * len(THR))
-    for cfg in RUNS:
-        lab = cfg['label']
+    for c in RUNS:
+        lab = c['label']
         if lab == 'B1':
             continue
         per = {}
         for th in THR:
-            r, o = build(cfg, end_frac=th)
+            r, o = build(c, end_frac=th)
             per[th] = [w['dT_stop'] for w in o['agg']['windows']]
         n = max(len(v) for v in per.values())
         for i in range(n):
             P(f"| {lab} | {i + 1} | " + ' | '.join((f(per[t][i]) if i < len(per[t]) else '-') for t in THR) + ' |')
     P('')
+    P('B1 は stop_point が記録されていないので窓がなく、しきい値に依らない (ΔT_stop = 0, ΔT_track 一定)。\n')
 
     with open(os.path.join(OUT, 'decomp_table_r1265.md'), 'w') as fh:
         fh.write('\n'.join(md) + '\n')
-    with open(os.path.join(OUT, 'decomp_totals_r1265.csv'), 'w', newline='') as fh:
+    with open(os.path.join(OUT, 'decomp_radius_compare.csv'), 'w', newline='') as fh:
         w = csv.writer(fh)
-        w.writerow(['run', 'scope', 'dist_m', 'laps_equiv'] + KEYS)
-        w.writerows(csv_tot)
-    with open(os.path.join(OUT, 'decomp_segments_r1265.csv'), 'w', newline='') as fh:
+        w.writerow(['run', 'scope', 'term', 'r_0.1265', 'r_0.124', 'diff'])
+        w.writerows(csv_all)
+    with open(os.path.join(OUT, 'decomp_track_r1265.csv'), 'w', newline='') as fh:
         w = csv.writer(fh)
-        w.writerow(['run', 'segment', 'lap', 'dist_m'] + KEYS)
-        w.writerows(csv_seg)
-    with open(os.path.join(OUT, 'decomp_laps_r1265.csv'), 'w', newline='') as fh:
-        w = csv.writer(fh)
-        w.writerow(['run', 'lap', 'dist_m'] + KEYS)
-        w.writerows(csv_lap)
+        w.writerow(['run', 'scope', 'dist_or_lap_len_0.124', 'dist_or_lap_len_0.1265', 'dT_track_0.124', 'dT_track_0.1265', 'change', 'dT_stop_0.124', 'dT_stop_0.1265'])
+        w.writerows(csv_track)
     with open(os.path.join(OUT, 'decomp_end_threshold_sweep.csv'), 'w', newline='') as fh:
         w = csv.writer(fh)
-        w.writerow(['calibration', 'run', 'threshold', 'dT_track', 'dT_stop', 'sum', 'n_windows', 'window_dur_total'])
+        w.writerow(['wheel_radius', 'run', 'threshold', 'dT_track', 'dT_stop', 'sum', 'n_windows', 'window_dur_total'])
         w.writerows(sw_rows)
-
-    keep = {}
-    for lab, (r, o) in cal.items():
-        keep[lab] = dict(
-            vcap=r.vcap, tv=r.tv, vs=r.vs, tg20=r.tg20, vprev=r.vprev, vnear=r.vnear, s20=r.s20, vm20=r.vm20,
-            ta=r.ta, laps_t=o['laps_t'], s_edges=o['s_edges'], grid=o['grid'], v_ref=o['v_ref'], v_pd=o['v_pd'],
-            v_phys=o['v_phys'], kap=o['kap'], wins=o['wins'], agg=o['agg'], nlap=o['nlap'], stop_t=r.stop_t, s_t=r.s_t)
-    pickle.dump(keep, open(os.path.join(OUT, 'decomp_results_r1265.pkl'), 'wb'))
-    F.R = keep
-    F.fig_bars('decomp_4ms_r1265.png', note=' - wheel radius 0.1265 m')
     print('\n'.join(md))
 
 

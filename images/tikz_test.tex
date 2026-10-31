@@ -1,0 +1,23 @@
+\documentclass[a4paper, 12pt, openany, oneside]{ltjsbook}
+\usepackage[haranoaji]{luatexja-preset}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{float}
+\setlength{\textwidth}{\fullwidth}
+\newsavebox{\tstbox}
+\newcommand{\tstfig}[1]{%
+  \sbox{\tstbox}{\input{#1}}%
+  \typeout{FIGSIZE #1: w=\the\dimexpr\wd\tstbox*254/7227\relax cm (textwidth=\the\dimexpr\textwidth*254/7227\relax cm), h=\the\dimexpr(\ht\tstbox+\dp\tstbox)*254/7227\relax cm}%
+  \par\noindent\rule{\textwidth}{0.2pt}\par
+  \noindent\hbox to\textwidth{\hss\usebox{\tstbox}\hss}\par
+  \noindent\rule{\textwidth}{0.2pt}\par
+}
+\begin{document}
+\pagestyle{empty}
+\tstfig{fig_system}
+
+\bigskip
+\tstfig{fig_sil}
+\end{document}

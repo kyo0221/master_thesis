@@ -14,6 +14,8 @@ from steered_drive_msg.msg import SteeredDrive
 
 course_npz, out, t_end = sys.argv[1], sys.argv[2], float(sys.argv[3])
 xc = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0
+if xc == 0: xc = float(os.environ.get('SIL_XC', 0))   # 悲観モデル: 接線からの偏差に 1/(1+(x/xc)^2) を掛ける
+NS = float(os.environ.get('SIL_NOISE_SCALE', 1.0))   # 実CNN誤差特性の雑音倍率
 sig_slope = float(sys.argv[5]) if len(sys.argv) > 5 else float(os.environ.get('SIL_SIGSLOPE', 0.045))
 rho = float(sys.argv[6]) if len(sys.argv) > 6 else 0.955
 yaw_gain = float(sys.argv[7]) if len(sys.argv) > 7 else float(__import__('os').environ.get('SIL_K', 0.9))
@@ -22,7 +24,8 @@ import os
 E=lambda k,d: float(os.environ.get(k,d))
 GRIP=E('SIL_GRIP',0.0); FRZ=[float(v_) for v_ in os.environ.get('SIL_FREEZE','-1,0').split(',')]
 OBS_S=E('OBS_S',-1); OBS_D=E('OBS_D',0.0); OBS_R=E('OBS_R',9.3); OBS_W=E('OBS_W',0.4); OBS_ID=int(E('OBS_ID',0)); OBS_VY=E('OBS_VY',0.0); OBS_T0=E('OBS_T0',0.0)
-SIG_PYR=E('SIG_PYLON_R',9.3); SIG_REARM=int(E('SIL_SIG_REARM',0)); SIG_S=E('SIG_S',-1); SIG_GREEN_AT=E('SIG_GREEN_AT',1e9); SIG_MISRED=E('SIG_MISRED',0); SIG_STOP_HOLD=E('SIG_STOP_HOLD',0)
+DIST_BIAS=int(E('SIL_DIST_BIAS',0)); BIAS_X=[3.0,5.0,7.0,9.0,11.5,15.0,19.5,26.0,35.0]; BIAS_R=[1.00,0.97,0.84,0.76,0.70,0.61,0.55,0.49,0.52]   # コーンの報告距離/実距離（実車 R1 の 3 接近から再計算した値。実距離の区間中央値で折れ線補間、端は一定）
+SIG_PYR=E('SIG_PYLON_R',9.3); SIG_PANEL_R=E('SIG_PANEL_R',-1); SIG_REARM=int(E('SIL_SIG_REARM',0)); SIG_S=E('SIG_S',-1); SIG_GREEN_AT=E('SIG_GREEN_AT',1e9); SIG_MISRED=E('SIG_MISRED',0); SIG_STOP_HOLD=E('SIG_STOP_HOLD',0)
 WRONG=os.environ.get('SIL_WRONG',''); WZ=[float(v_) for v_ in os.environ.get('SIL_WRONG_ZONE','0,0').split(',')]; wrong_c=Course(WRONG) if WRONG else None
 YF=[float(v_) for v_ in os.environ.get('SIL_YAW_FREEZE','0,0').split(',')]; yf_val=[None]
 PAUSE=E('SIL_PAUSE',0); paused=[False]; resumed=[False]
@@ -30,10 +33,13 @@ VDB=E('SIL_VDB',0); GNSS_ON=int(E('SIL_GNSS',1)); NAVZ=[float(v_) for v_ in os.e
 VTAU=E('SIL_VTAU',0.4); VG=E('SIL_VG',0.97); VDEL=E('SIL_VDEL',0.06); AMAX=E('SIL_AMAX',99); DMAX=E('SIL_DMAX',99)
 WB = 0.733; sig0 = float(os.environ.get('SIL_SIG0', 0.03)); horizon = float(os.environ.get('SIL_HORIZON', 9.0)); rows = np.linspace(0.8, horizon, 21)
 REAL=int(os.environ.get('SIL_REALNOISE','0'))   # 実CNN(1024)の誤差特性: 行位置・数cmの胴体誤差・先端1点の大きな誤差
+REAL_ROWS=os.environ.get('SIL_REAL_ROWS','0.769,0.806,0.847,0.892,0.943,0.999,1.062,1.133,1.215,1.31,1.42,1.551,1.708,1.901,2.142,2.453,2.869,3.454,4.339,5.832,8.888')
+RC_B=E('SIL_REAL_COM_B',0.05); RC_RHO=E('SIL_REAL_COM_RHO',0.65); R_WHITE=E('SIL_REAL_WHITE',0.01); RT_B=E('SIL_REAL_TIP_B',0.25); RT_RHO=E('SIL_REAL_TIP_RHO',0.7); R_CUT=E('SIL_REAL_CUT_P',0.1)
 if REAL:
-    rows = np.array([0.769, 0.806, 0.847, 0.892, 0.943, 0.999, 1.062, 1.133, 1.215, 1.31, 1.42, 1.551, 1.708, 1.901, 2.142, 2.453, 2.869, 3.454, 4.339, 5.832, 8.888])
-    horizon = 9.0
+    rows = np.array([float(q) for q in REAL_ROWS.split(',')])
+    horizon = E('SIL_REAL_HORIZON', 9.0)
 HZC=float(os.environ.get('SIL_HORIZON_CURVE','0'))   # >0: 前方6m以内に |κ|>0.04 の区間があるとき知覚の最遠距離をこの値にする
+FARTRUE=float(os.environ.get('SIL_FAR_TRUE','0'))
 IDEAL_ARC=int(os.environ.get('SIL_IDEAL_ARC','0'))
 ROWSTEP=float(os.environ.get('SIL_ROWSTEP','0'))   # >0: 知覚点の行間隔 [m]（理想経路を平滑化出力と同じ密度にする）
 if ROWSTEP > 0: rows = np.arange(0.8, horizon+1e-9, ROWSTEP)
@@ -46,6 +52,7 @@ pv = n.create_publisher(Path, os.environ.get('SIL_PATH_TOPIC','/planner/vision_p
 pa = n.create_publisher(Bool, '/autonomous', QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 pcas = n.create_publisher(Float64MultiArray, '/caster_data', 10)
 from object_detection_msgs.msg import ObjectInfoArray, ObjectInfo
+from speed_path_msgs.msg import SpeedPath, StopPoint
 from rclpy.qos import qos_profile_sensor_data
 pobj = n.create_publisher(ObjectInfoArray, '/perception/objects', qos_profile_sensor_data)
 sig_log = []; green_time=[None]
@@ -82,6 +89,17 @@ def on_gp(m):
     y0 = float('nan') if P_[kk[0], 0] > 1.5 else float(np.interp(0.0, P_[kk, 0], P_[kk, 1]))
     gp_log.append((gp_s[0], gp_s[1], y0))
 n.create_subscription(Path, '/planner/global_path', on_gp, 10)
+sp_last = {'P': None, 't': float('nan')}; plan_log = []; stop_log = []; clk = [0.0]
+def on_sp(m): sp_last['P'] = np.array([(q.pose.position.x, q.pose.position.y, q.linear_velocity) for q in m.points]); sp_last['t'] = clk[0]
+def on_stop(m): stop_log.append((clk[0], m.distance))
+n.create_subscription(SpeedPath, '/planner/speed_path', on_sp, 10)
+n.create_subscription(StopPoint, '/planning/stop_point', on_stop, 10)
+def preview(P, px, py, vm, tpre=0.3):   # speed_path_lookup.cpp preview_point の再現: 自車最近点から max(v*0.3, 0.5) m 先の計画速度
+    ni = int(np.argmin((P[:, 0]-px)**2 + (P[:, 1]-py)**2)); target = max(max(vm, 0.0)*tpre, 0.5)
+    cs = np.cumsum(np.hypot(np.diff(P[ni:, 0]), np.diff(P[ni:, 1]))); j = int(np.searchsorted(cs, target))
+    if j >= len(cs): return P[ni, 2], P[-1, 2], 1.0
+    s0 = cs[j-1] if j > 0 else 0.0; a, b = P[ni+j], P[ni+j+1]; rr = (target - s0)/max(cs[j]-s0, 1e-9)
+    return P[ni, 2], a[2] + rr*(b[2]-a[2]), 0.0
 def st(t):
     s = int(t); return s, int((t - s)*1e9)
 ts0 = TransformStamped(); ts0.header.frame_id = 'base_link'; ts0.child_frame_id = 'chassis'; ts0.transform.rotation.w = 1.0
@@ -92,7 +110,7 @@ nst = int(round(SDEL/0.01)); nv = int(round(VDEL/0.01)); stb = [0.0]*(nst+1); vb
 noise = np.zeros(len(rows)); pend = []; pend_lim = []; hint = 0; s_travel = 0.0; log = []
 wall0 = time.time(); k = 0; t_next_img = 0.0; lag_min = 1e9; STOP_TRAVEL = E('SIL_STOP_TRAVEL', 1e9)
 while True:
-    t = k*dt; T = T0 + t
+    t = k*dt; T = T0 + t; clk[0] = t
     if t > t_end or s_travel >= STOP_TRAVEL: break
     cl = Clock(); cl.clock.sec, cl.clock.nanosec = st(T); pc.publish(cl)
     if k % 50 == 0: pa.publish(Bool(data=True))
@@ -113,17 +131,22 @@ while True:
                     a_, b_ = fi[0], fi[1]; sl = (yy[b_]-yy[a_])/(rows[b_]-rows[a_]); base = yy[a_] + sl*(rows-rows[a_])
                     gam = 1.0/(1.0+(np.maximum(rows-rows[a_], 0)/xc)**2); yy = base + (yy-base)*gam
             if REAL:
-                real['com'] = 0.65*real['com'] + math.sqrt(1-0.65**2)*rng.laplace(0, 0.05)
-                real['tip'] = 0.7*real['tip'] + math.sqrt(1-0.7**2)*rng.laplace(0, 0.25)
-                P = np.c_[rows, yy + real['com'] + rng.normal(0, 0.01, len(rows))]; P = P[np.isfinite(P[:, 1])]
+                real['com'] = RC_RHO*real['com'] + math.sqrt(1-RC_RHO**2)*rng.laplace(0, RC_B*NS)
+                real['tip'] = RT_RHO*real['tip'] + math.sqrt(1-RT_RHO**2)*rng.laplace(0, RT_B*NS)
+                P = np.c_[rows, yy + real['com'] + rng.normal(0, R_WHITE*NS, len(rows))]; P = P[np.isfinite(P[:, 1])]
                 if len(P) and P[-1, 0] > 8.0: P[-1, 1] += real['tip']
-                if rng.random() < 0.1 and len(P) > 4: P = P[:-1]   # 1 割は 8.9m の点が出ない(経路長 5.8m)
+                if rng.random() < R_CUT and len(P) > 4: P = P[:-1]   # 1 割は 8.9m の点が出ない(経路長 5.8m)
             else:
                 sig = sig0 + sig_slope*np.maximum(rows-2.0, 0)
                 noise = rho*noise + math.sqrt(1-rho**2)*rng.standard_normal(len(rows))*sig
                 P = np.c_[rows, yy + noise + sig0*rng.standard_normal(len(rows))]; P = P[np.isfinite(P[:, 1])]
             if IDEAL_ARC:   # 弧長刻みの真値経路（x 基準の再サンプリングをしない）。急カーブで経路が手前に折り返しても欠けない
                 W2 = c.ahead(hint, np.arange(0.8, horizon+1e-9, 0.2)); P = np.c_[cc*(W2[:, 0]-x)+sn*(W2[:, 1]-y), -sn*(W2[:, 0]-x)+cc*(W2[:, 1]-y)]
+            if FARTRUE > 0 and len(P) >= 2:   # 介入: 9 m 以遠の真値点（雑音なし, 1 m 間隔）を FARTRUE m まで足す（平滑化の外挿を当てはめ範囲内に収める検証用）
+                W3 = c.ahead(hint, np.arange(8.0, 32.0, 0.2)); B3 = np.c_[cc*(W3[:, 0]-x)+sn*(W3[:, 1]-y), -sn*(W3[:, 0]-x)+cc*(W3[:, 1]-y)]
+                dec = np.where(np.diff(B3[:, 0]) <= 0)[0]; B3 = B3[:dec[0]+1] if len(dec) else B3
+                B3 = B3[(B3[:, 0] > P[:, 0].max() + 0.4) & (B3[:, 0] <= FARTRUE)][::5]
+                if len(B3): P = np.vstack([P, B3])
             if rng.random() < OUTL:
                 P = P.copy(); P[:, 1] += rng.choice([-1, 1])*rng.uniform(0.5, 1.5)*np.clip((P[:, 0]-1.0)/5.0, 0, 1)
             if rng.random() >= DROP:
@@ -162,7 +185,7 @@ while True:
         objs = []
         cc_, sn_ = math.cos(th), math.sin(th)
         is_green = t >= SIG_GREEN_AT if SIG_STOP_HOLD == 0 else (green_time[0] is not None and t >= green_time[0])
-        for lat, oid, rng_ in [(-1.0, 0, SIG_PYR), (-1.7, 2, max(20.0, SIG_PYR))]:
+        for lat, oid, rng_ in [(-1.0, 0, SIG_PYR), (-1.7, 2, max(20.0, SIG_PYR) if SIG_PANEL_R < 0 else SIG_PANEL_R)]:
             q_ = P_ + N_*lat; bx = cc_*(q_[0]-x)+sn_*(q_[1]-y); by = -sn_*(q_[0]-x)+cc_*(q_[1]-y)
             if not (0.8 < bx < rng_) or (FOV > 0 and abs(math.atan2(by, bx)) > FOV): continue
             if oid == 2:
@@ -170,6 +193,7 @@ while True:
                 if rng.random() < 0.03: col = 5 - col
                 if is_green and bx < 6.0 and rng.random() < SIG_MISRED: col = 2
                 oid = col
+            if oid == 0 and DIST_BIAS: rr_ = float(np.interp(math.hypot(bx, by), BIAS_X, BIAS_R)); bx *= rr_; by *= rr_   # 方位を保って報告位置を縮める（パネルは位置誤差なし）
             o_ = ObjectInfo(); o_.id = oid; o_.x = float(bx); o_.y = float(by); o_.width = 0.3; objs.append(o_)
         a_ = ObjectInfoArray(); a_.header.frame_id = 'base_link'; a_.header.stamp.sec, a_.header.stamp.nanosec = st(T); a_.objects = objs + obs_objs(); pobj.publish(a_)
         if SIG_STOP_HOLD and green_time[0] is None and v < 0.05 and t > 5: green_time[0] = t + SIG_STOP_HOLD
@@ -242,6 +266,8 @@ while True:
         dobs = 99.0
         if OBS_S >= 0:
             io = int(round(OBS_S/0.2)) % len(c.xy); q_ = c.xy[io] + c.n[io]*(OBS_D + OBS_VY*max(t-OBS_T0, 0.0)); dobs = math.hypot(q_[0]-x, q_[1]-y) - OBS_W/2
+        if sp_last['P'] is not None and len(sp_last['P']): plan_log.append((t,) + tuple(preview(sp_last['P'], ox, oy, vm)) + (t - sp_last['t'],))
+        else: plan_log.append((t, float('nan'), float('nan'), float('nan'), float('nan')))
         log.append((t, x, y, v, r, cmd['st'], cmd['v'], e, c.s[hint], s_travel, dobs, br['sep'], float(br['on']), float(nav_state[0]!='straight')))
         if abs(e) > 2.5: break
     rclpy.spin_once(n, timeout_sec=0)
@@ -251,6 +277,6 @@ while True:
     gp_s[0] = t; gp_s[1] = s_travel
     if lag > 0: time.sleep(lag)
 pickle.dump(np.array(log), open(out, 'wb'))
-pickle.dump(dict(gp=np.array(gp_log), lag_min=lag_min, wall=time.time()-wall0, L=c.L), open(out.replace('.pkl', '_aux.pkl'), 'wb'))
+pickle.dump(dict(gp=np.array(gp_log), lag_min=lag_min, wall=time.time()-wall0, L=c.L, plan=np.array(plan_log), stop=np.array(stop_log).reshape(-1, 2), meta=dict(argv=sys.argv, env={k_: v_ for k_, v_ in os.environ.items() if k_.startswith(('SIL_', 'SIG_', 'OBS_'))})), open(out.replace('.pkl', '_aux.pkl'), 'wb'))
 L = np.array(log); m = L[:, 9] > 5
 print(f'走行 {L[-1,9]:.0f}m  |e| p95 {np.percentile(np.abs(L[m,7]),95):.2f} max {np.abs(L[m,7]).max():.2f}  v_mean {L[m,3].mean():.2f}  cmd受信 {cmd["n"]}')

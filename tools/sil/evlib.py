@@ -1,9 +1,11 @@
 import pickle, numpy as np, glob, os, re
 ROOT = os.path.dirname(os.path.abspath(__file__))
+OUTD = os.path.join(ROOT, os.environ.get('SIL_OUT', '.'))   # 出力先ルート（SIL_OUT で切替。既定は ROOT）
+RES = OUTD + '/res'   # 結果 pkl の置き場
 LAP = {'red': 258.3, 'blue': 255.3}
 EMAX = 1.5
 def load(tag):
-    L = pickle.load(open(f'{ROOT}/res/{tag}.pkl', 'rb')); A = pickle.load(open(f'{ROOT}/res/{tag}_aux.pkl', 'rb')); return L, A
+    L = pickle.load(open(f'{RES}/{tag}.pkl', 'rb')); A = pickle.load(open(f'{RES}/{tag}_aux.pkl', 'rb')); return L, A
 def metrics(tag, course):
     L, A = load(tag); Lc = LAP[course]; s = L[:, 9]; t = L[:, 0]; e = np.abs(L[:, 7])
     m = dict(tag=tag, maxe=float(e.max()), reached2=bool(s[-1] >= 2*Lc), reached1=bool(s[-1] >= Lc), abort=bool(e.max() > 2.5), lag_min=A['lag_min'], wall=A['wall'], t_end=float(t[-1]), dist=float(s[-1]))

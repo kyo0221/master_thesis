@@ -1,0 +1,57 @@
+\begin{tikzpicture}[
+  font=\fontspec{TeX Gyre Heros Cn}\fontsize{8}{8.8}\selectfont,
+  >={Stealth[length=1.6mm,width=1.2mm]},
+  mod/.style={draw=black!55, line width=0.5pt, fill=black!4, anchor=north west, inner sep=0pt},
+  nd/.style={draw=black!85, line width=0.4pt, fill=white, align=center, inner xsep=1.5pt, inner ysep=1.5pt, minimum height=1.0cm},
+  model/.style={nd, fill=black!14},
+  lab/.style={font=\fontspec{TeX Gyre Heros Cn}\fontsize{7.5}{8.4}\selectfont, align=center, inner sep=1pt},
+  arr/.style={->, line width=0.5pt},
+  dot/.style={circle, fill=black, inner sep=0pt, minimum size=3pt}
+]
+  % ---------- 上段 ----------
+  \node[model, minimum width=2.00cm, minimum height=1.20cm] (pgm) at (0,0) {Path generation\\model};
+
+  \node[mod, minimum width=7.94cm, minimum height=3.07cm] (impl) at ($(pgm.east)+(1.80,1.00)$) {};
+  \node[anchor=north west, inner sep=0pt] at ($(impl.north west)+(0.07,-0.07)$) {\bfseries Implemented software (unchanged)};
+
+  \node[nd, minimum width=1.55cm] (ps) at ($(impl.north west)+(0.97,-1.10)$) {Path\\smoothing};
+  \node[nd, minimum width=1.55cm, right=0.45cm of ps] (lp) {Local path\\planning};
+  \node[nd, minimum width=1.55cm, right=0.45cm of lp] (vp) {Velocity\\planning};
+  \node[nd, minimum width=1.55cm, right=0.45cm of vp] (pf) {Path\\following};
+  \node[nd, minimum width=1.55cm] (spg) at ($(vp)+(0,-1.45)$) {Stop point\\generation};
+  \draw[arr] (ps) -- (lp);
+  \draw[arr] (lp) -- (vp);
+  \draw[arr] (vp) -- (pf);
+  \draw[arr] (spg) -- (vp);
+
+  \node[model, minimum width=2.00cm, minimum height=1.20cm, anchor=west, xshift=1.90cm] (vm) at (impl.east |- pgm) {Vehicle\\model};
+
+  \draw[arr] (pgm.east) -- node[lab, above=2pt] {target path} (impl.west |- pgm);
+  \draw[arr] (impl.east |- pgm) -- node[lab, above=2pt] {velocity and\\steering\\commands} (vm.west);
+
+  % ---------- 下段 ----------
+  \node[model, minimum width=1.80cm, minimum height=0.85cm] (det) at ($(lp)!0.5!(vp)+(0,-3.62)$) {Detection\\model};
+  \node[model, minimum width=1.80cm, minimum height=0.85cm] (odo) at ($(pf)+(0,-3.62)$) {Odometry\\(true pose)};
+  \path (0,-2.62) coordinate (bary);
+
+  \draw[line width=0.5pt] (det.north) -- node[lab, right=1pt] {detections} (det.north |- bary);
+  \draw[line width=0.5pt] (lp.south |- bary) -- (spg.south |- bary);
+  \draw[arr] (lp.south |- bary) -- (lp.south);
+  \draw[arr] (spg.south |- bary) -- (spg.south);
+  \node[dot] at (det.north |- bary) {};
+  \draw[arr] (odo.north) -- node[lab, right=1pt] {odometry} (odo.north |- impl.south);
+
+  % ---------- フィードバック ----------
+  \path (0,-4.55) coordinate (busy);
+  \coordinate (busR) at (vm.south |- busy);
+  \coordinate (busL) at (pgm.south |- busy);
+  \coordinate (jO) at (odo.south |- busy);
+  \coordinate (jD) at (det.south |- busy);
+
+  \draw[line width=0.5pt] (vm.south) -- (busR) -- (busL);
+  \draw[arr] (busL) -- node[lab, right=1pt] {true pose} (pgm.south);
+  \draw[arr] (jO) -- (odo.south);
+  \draw[arr] (jD) -- (det.south);
+  \node[dot] at (jO) {};
+  \node[dot] at (jD) {};
+\end{tikzpicture}

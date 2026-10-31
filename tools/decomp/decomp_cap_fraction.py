@@ -4,20 +4,19 @@ import os
 import numpy as np
 from decomp import *   # noqa: F401,F403
 
-SC = WHEEL_R_TRUE / WHEEL_R_CFG
 VPH = (5.5, 6.0, 6.5)
 rows_csv = []
 md = []
 P = md.append
 P('# v_cap 支配率と T_phys の物理上限速度依存 (車輪半径 0.1265 m 較正後)\n')
-P('- v_ref は T_ref の速度プロファイル (v_cap, a_acc 3.4, a_dec 3.6, a_y,max 6.0)。v_rec は speed_path の 0.3 s プレビュー点の速度 (20 Hz 制御周期ごと、走行距離で重み付け)。')
+P('- v_ref は T_ref の速度プロファイル (v_cap, a_acc 3.4, a_dec 4.0, a_y,max 6.0)。v_rec は speed_path の 0.3 s プレビュー点の速度 (20 Hz 制御周期ごと、走行距離で重み付け)。')
 P('- 割合は解析範囲 (打切りまで) の走行距離に対する %。v_ref の「v_cap に等しい」は v_ref ≥ v_cap − 1e-6 m/s (曲率・加減速のどちらにも抑えられていない)。')
 P('- v_rec の割合は、全距離 (停止窓内を含む) と、停止窓を除いた距離の 2 通り。\n')
 
 res = {}
 for cfg in RUNS:
     lab = cfg['label']
-    r, o = build(cfg, scale=SC)
+    r, o = build(cfg)
     vcap = r.vcap
     g, vref = o['grid'], o['v_ref']
     n = len(g)
@@ -55,7 +54,7 @@ for cfg in RUNS:
     nl = o['agg']['total']['ds'] / L
     tp = {}
     for vp in VPH:
-        _, oo = build(cfg, scale=SC, vphys=vp)
+        _, oo = build(cfg, vphys=vp)
         a = oo['agg']['total']
         tp[vp] = (a['phys'] / nl, a['cap'] / nl, a['ref'] / nl, a['phys'])
     res[lab] = dict(vcap=vcap, f_ref_cap=f_ref_cap, f_ref_99=f_ref_99, f_curv=f_curv, f_acc=f_acc,
@@ -69,7 +68,7 @@ for lab, x in res.items():
     P(f"| {lab} | {x['vcap']} | {x['dist']:.1f} | {x['f_ref_cap']:.1f} | {x['f_ref_99']:.1f} | {x['f_curv']:.1f} | {x['f_acc']:.1f} | {x['f_rec_all']:.1f} | {x['f_rec_mov']:.1f} | {x['f_rec_eq_mov']:.1f} | {x['f_rec_win']:.1f} |")
     rows_csv.append(['cap_fraction', lab, x['vcap'], round(x['dist'], 1), round(x['f_ref_cap'], 2), round(x['f_ref_99'], 2), round(x['f_curv'], 2), round(x['f_acc'], 2), round(x['f_rec_all'], 2), round(x['f_rec_mov'], 2), round(x['f_rec_eq_mov'], 2), round(x['f_rec_win'], 2)])
 P('')
-P('## 2. 物理上限速度 v_phys を変えたときの 1 周あたり T_phys (a_y,max=6.0, 加速 3.4 / 減速 3.6 m/s²)\n')
+P('## 2. 物理上限速度 v_phys を変えたときの 1 周あたり T_phys (a_y,max=6.0, 加速 3.4 / 減速 4.0 m/s²)\n')
 P('1 周あたり = 合計 / 周回数 (周長比)。ΔT_cap = T_ref − T_phys も併記 (T_ref は v_cap のまま不変)。\n')
 P('| run | 周長 [m] | v_cap | T_phys(5.5) | T_phys(6.0) | T_phys(6.5) | ΔT_cap(5.5) | ΔT_cap(6.0) | ΔT_cap(6.5) | T_ref | T_phys(6.0) 合計 [s] |')
 P('|---|---|---|---|---|---|---|---|---|---|---|')
@@ -80,7 +79,7 @@ for lab, x in res.items():
 P('')
 P('T_phys の差 (1 周あたり、v_phys 5.5 → 6.0 → 6.5): ' + ', '.join(
     f"{lab} {x['tp'][5.5][0] - x['tp'][6.0][0]:+.2f} / {x['tp'][6.0][0] - x['tp'][6.5][0]:+.2f} s" for lab, x in res.items()) + '\n')
-P('B1 は |κ|max=0.206 で a_y=6.0 が効く区間があり (v_κ≈5.4 m/s)、v_phys を 6.5 に上げても T_phys の短縮は赤コースより小さい。赤コース (|κ|max≈0.09〜0.11、v_κ≥7.3 m/s、v_phys 6.5 でも非律速) は曲率に抑えられず、T_phys ≈ 周長/v_phys + 加減速の補正。\n')
+P('B1 は |κ|max=0.206 で a_y=6.0 が効く区間があり (v_κ≈5.4 m/s)、v_phys を 6.5 に上げても T_phys の短縮は赤コースより小さい。赤コース R1 (|κ|max≈0.09、v_κ≈8.3 m/s、v_phys 6.5 でも非律速) は曲率に抑えられず、T_phys ≈ 周長/v_phys + 加減速の補正。\n')
 
 with open('decomp_cap_fraction.md', 'w') as fh:
     fh.write('\n'.join(md) + '\n')

@@ -3,9 +3,11 @@ import json, sys, os, subprocess, time, signal, threading
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gencfg
 ROOT = os.path.dirname(os.path.abspath(__file__))
+OUTD = os.path.join(ROOT, os.environ.get('SIL_OUT', '.'))   # 出力先ルート（run1.sh と共通）
+os.makedirs(OUTD + '/cfg', exist_ok=True)
 jobs = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
 N = int(sys.argv[2]); DOM0 = int(sys.argv[3]) if len(sys.argv) > 3 else 80
-jobs = [j for j in jobs if not os.path.exists(f"{ROOT}/res/{j['tag']}_aux.pkl")]
+jobs = [j for j in jobs if not os.path.exists(f"{OUTD}/res/{j['tag']}_aux.pkl")]
 jobs.sort(key=lambda j: -j['T'])
 procs = {}; lock = threading.Lock(); stop = [False]
 def term(*a):
@@ -19,10 +21,10 @@ def worker(slot):
         with lock:
             if not jobs: return
             j = jobs.pop(0)
-        cfgp = f"{ROOT}/cfg/{j['tag']}.yaml"; gencfg.make(cfgp, **j['cfg'])
+        cfgp = f"{OUTD}/cfg/{j['tag']}.yaml"; gencfg.make(cfgp, **j['cfg'])
         env = dict(os.environ); env['HOSTENV'] = j.get('hostenv', '')
         t0 = time.time()
-        p = subprocess.Popen(['bash', f"{ROOT}/run1.sh", str(DOM0 + slot), j['tag'], j['host'], cfgp, j['course'], str(j['T']), j['env'], j['hextra']],
+        p = subprocess.Popen(['bash', f"{ROOT}/" + os.environ.get('SCHED_SCRIPT', 'run1.sh'), str(DOM0 + slot), j['tag'], j['host'], cfgp, j['course'], str(j['T']), j['env'], j['hextra']],
                              env=env, start_new_session=True)
         procs[slot] = p; p.wait(); procs.pop(slot, None)
         print(f"[{time.strftime('%H:%M:%S')}] done {j['tag']} slot{slot} {time.time()-t0:.0f}s rc={p.returncode}", flush=True)
