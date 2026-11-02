@@ -32,12 +32,12 @@ def speed_fig():
     p1 = sim_fopdt(sg, float(m1['L']), float(m1['T']), float(m1['K']))[0, :s.sum()]
     p2 = sim_slew(sg, float(m2['L']), float(m2['T']), float(m2['K']), float(m2['a_acc']), float(m2['a_dec']))[0, :s.sum()]
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.step(t[s], u[s], where='post', color=C['cmd'], lw=1.3, label='Velocity command')
+    ax.step(t[s], u[s], where='post', color=C['cmd'], lw=1.3, label='Speed command')
     ax.plot(t[s], vw[s], color=C['meas'], lw=1.3, label='Wheel speed')
     ax.plot(t[s], p2, color=C['model'], lw=1.3, ls='--', label='Rate limit + first-order lag')
     ax.plot(t[s], p1, color=C['fopdt'], lw=1.1, ls=':', label='First-order lag with dead time')
     ax.set_xlabel('Time [s]')
-    ax.set_ylabel('Velocity [m/s]')
+    ax.set_ylabel('Speed [m/s]')
     ax.set_xlim(a, b)
     ax.set_ylim(-0.5, 5.6)
     ax.legend(loc='lower center', ncol=4, bbox_to_anchor=(0.5, 1.0))

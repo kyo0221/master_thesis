@@ -31,7 +31,7 @@ for col, (course, title) in enumerate([('red', 'Red course'), ('blue', 'Blue cou
     axl.set_ylim(0, 82); axc.set_ylim(0, 118); axc.set_yticks([0, 50, 100])
     axl.set_title(title, loc='left', fontsize=10.5, fontweight='bold')
     axc.set_xticks(range(len(SPEEDS))); axc.set_xticklabels([f"{v/10:.1f} m/s" for v in SPEEDS]); axc.set_xlim(-0.55, len(SPEEDS) - 0.45)
-    axc.set_xlabel('Velocity limit')
+    axc.set_xlabel('Speed limit')
     for ax in (axl, axc):
         ax.yaxis.grid(True, color=GRID, lw=0.7, zorder=0); ax.set_axisbelow(True)
         for sp in ['top', 'right']: ax.spines[sp].set_visible(False)

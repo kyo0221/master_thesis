@@ -31,11 +31,11 @@ def speed_fig():
     a, b = 104.0, 134.0
     w = (tt >= a) & (tt <= b)
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.step(tt[w], u[w], where='post', color=C['cmd'], lw=1.3, label='Velocity command')
+    ax.step(tt[w], u[w], where='post', color=C['cmd'], lw=1.3, label='Speed command')
     ax.plot(tt[w], yy[w], color=C['meas'], lw=1.3, label='Wheel speed')
     ax.plot(tt[w], p[w], color=C['model'], lw=1.3, ls='--', label='Model output')
     ax.set_xlabel('Time [s]')
-    ax.set_ylabel('Velocity [m/s]')
+    ax.set_ylabel('Speed [m/s]')
     ax.set_xlim(a, b)
     ax.set_ylim(-0.1, 4.3)
     ax.legend(loc='lower center', ncol=3, bbox_to_anchor=(0.5, 1.0))

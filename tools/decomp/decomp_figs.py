@@ -19,8 +19,8 @@ OUTD = os.environ.get('IMG_DIR', '/home/kyo/master_thesis/images')
 
 INK, INK2, GRID = '#0b0b0b', '#52514e', '#e3e2de'
 C = {'phys': '#b9b8b2', 'cap': '#2a78d6', 'path': '#eb6834', 'plan': '#1baf7a', 'track': '#eda100', 'stop': '#e87ba4'}
-LAB = {'phys': r'$T_{phys}$', 'cap': r'$\Delta T_{cap}$', 'path': r'$\Delta T_{path}$', 'plan': r'$\Delta T_{plan}$',
-       'track': r'$\Delta T_{track}$', 'stop': r'$\Delta T_{stop}$'}
+LAB = {'phys': r'$T_{\mathrm{phys}}$', 'cap': r'$\Delta T_{\mathrm{cap}}$', 'path': r'$\Delta T_{\mathrm{path}}$', 'plan': r'$\Delta T_{\mathrm{plan}}$',
+       'track': r'$\Delta T_{\mathrm{track}}$', 'stop': r'$\Delta T_{\mathrm{stop}}$'}
 ORDER = ['phys', 'cap', 'plan', 'path', 'track', 'stop']
 NAME = {'R1': 'R1\n(red, 4.0 m/s)', 'B1': 'B1\n(blue, 4.5 m/s)'}
 RUNS = ['R1', 'B1']
@@ -109,11 +109,11 @@ def fig_ts(R, lab, fname):
         s0 = np.interp(w['t0'], d['tv'], d['s_t'])
         s1 = np.interp(w['t1'], d['tv'], d['s_t'])
         a.axvspan(s0, s1, color=C['stop'], alpha=0.22, lw=0)
-    a.plot(g, d['v_phys'], color=C['phys'], lw=1.4, ls='-', label=r'$v_{phys}$')
-    a.plot(g, d['v_ref'], color=C['cap'], lw=2.4, ls='-', alpha=0.45, label=r'$v_{ref}$')
-    a.plot(g, d['v_pd'], color=C['plan'], lw=1.2, ls='--', label=r'$v_{plan}$')
-    a.plot(s20, vp, color=C['path'], lw=1.0, label=r'$v_{rec}$')
-    a.plot(sm, vm, color=INK, lw=0.9, label=r'$v_{meas}$')
+    a.plot(g, d['v_phys'], color=C['phys'], lw=1.4, ls='-', label=r'$v_{\mathrm{phys}}$')
+    a.plot(g, d['v_ref'], color=C['cap'], lw=2.4, ls='-', alpha=0.45, label=r'$v_{\mathrm{ref}}$')
+    a.plot(g, d['v_pd'], color=C['plan'], lw=1.2, ls='--', label=r'$v_{\mathrm{plan}}$')
+    a.plot(s20, vp, color=C['path'], lw=1.0, label=r'$v_{\mathrm{rec}}$')
+    a.plot(sm, vm, color=INK, lw=0.9, label=r'$v_{\mathrm{meas}}$')
     a.set_xlim(0, s_end)
     a.set_ylim(-0.1, 6.6)
     a.set_xlabel('Distance since autonomous start [m]')

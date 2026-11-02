@@ -28,8 +28,8 @@
     \nolinkurl{/joy} & \nolinkurl{sensor_msgs/msg/Joy} & 約11\,Hz & ジョイスティック入力（介入の検出） \\
     \multicolumn{4}{l}{\textbf{経路・計画・指令}} \\
     \nolinkurl{/planner/vision_path} & \nolinkurl{nav_msgs/msg/Path} & 約15\,Hz & 経路生成の出力 \\
-    \nolinkurl{/planner/global_path} & \nolinkurl{nav_msgs/msg/Path} & 約15\,Hz & 平滑化後の経路 \\
-    \nolinkurl{/planner/local_path} & \nolinkurl{nav_msgs/msg/Path} & 約10\,Hz & 局所経路計画の出力 \\
+    \nolinkurl{/planner/global_path} & \nolinkurl{nav_msgs/msg/Path} & 約15\,Hz & 参照経路（平滑化後の経路） \\
+    \nolinkurl{/planner/local_path} & \nolinkurl{nav_msgs/msg/Path} & 約10\,Hz & 局所経路（局所経路計画の出力） \\
     \nolinkurl{/planner/speed_path} & \nolinkurl{speed_path_msgs/msg/SpeedPath} & 約10\,Hz & 速度計画の出力（経路点と速度列） \\
     \nolinkurl{/planning/stop_point} & \nolinkurl{speed_path_msgs/msg/StopPoint} & 340件（事象） & 信号・障害物に対する停止点 \\
     \nolinkurl{/cmd_vel} & \nolinkurl{steered_drive_msg/msg/SteeredDrive} & 約20\,Hz & 並進速度と舵角の指令値 \\

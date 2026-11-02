@@ -60,7 +60,7 @@ def fig_timeseries(data):
         ax[2].set_xlim(0, te - ta)
         if col == 0:
             ax[0].set_ylabel('Speed [m/s]')
-            ax[1].set_ylabel('Lateral offset [m]')
+            ax[1].set_ylabel('Lateral deviation [m]')
             ax[2].set_ylabel('Steering command [deg]')
         else:
             ax[0].legend(loc='lower center', ncol=2, frameon=False, fontsize=9)

@@ -12,7 +12,7 @@
 走行した軌跡の弧長を$s$（実車では車輪速度の積算，シミュレーションでは車両モデルの走行距離による），軌跡の曲率を$\kappa(s)$とし，ある速度列$v(s)$による所要時間を$T[v]=\int ds/v(s)$と書く．停止点が発行されてから速度が計画値に戻るまでの区間を停止イベントの窓$W$（以下，停止窓）と呼び（停止点が最初に発行された時刻から，最後の発行の1\,s後以降に実測速度の0.3\,s移動平均が窓の直前の計画速度$v_b$の95\%に戻る時刻まで），それ以外の走行区間を移動区間と呼ぶ．各項は次のように定義する．
 \begin{description}[leftmargin=2\zw]
   \item[$T_{\mathrm{phys}}$（基準時間）] 車両の物理的な限界だけを与えた速度列$v_{\mathrm{phys}}(s)$による時間$T[v_{\mathrm{phys}}]$．物理的な限界とは，走行可能な最高速度$v_{\max}$，加速と減速の上限，横加速度の上限$a_{y,\max}$である．これらには，走行試験で同定した値と，試験で到達を確認した範囲を踏まえて定めた値を用い（\ref{sec:ident_test}項），値は\ref{chap:field}章のTable~\ref{tab:phys}に示す．速度列は，各点の上限$\min(v_{\max},\sqrt{a_{y,\max}/|\kappa|})$に対して，\eqnref{eq:forward}と\eqnref{eq:backward}を加速側と減速側に走査して求める．
-  \item[$\Delta T_{\mathrm{cap}}$（上限速度の設定による時間差）] 上の速度列に上限速度の設定値$v_{\mathrm{cap}}$を加えた速度列$v_{\mathrm{ref}}(s)$による時間$T_{\mathrm{ref}}=T[v_{\mathrm{ref}}]$と$T_{\mathrm{phys}}$の差．
+  \item[$\Delta T_{\mathrm{cap}}$（上限速度の設定値による時間差）] 上の速度列に上限速度の設定値$v_{\mathrm{cap}}$を加えた速度列$v_{\mathrm{ref}}(s)$による時間$T_{\mathrm{ref}}=T[v_{\mathrm{ref}}]$と$T_{\mathrm{phys}}$の差．
   \item[$\Delta T_{\mathrm{plan}}$（速度計画の設定値による時間差）] 同じ軌跡に速度計画の設定値（$a_{y,\max}$，$a_{x,\max}$，$v_{\mathrm{cap}}$．Table~\ref{tab:params}）を与えた速度列$v_{\mathrm{plan}}(s)$による時間と$T_{\mathrm{ref}}$の差．速度計画の設定値が物理限界に対して持つ余裕を表し，設定値が物理限界より大きい場合は負になる．
   \item[$\Delta T_{\mathrm{path}}$（経路生成による時間差）] 速度計画の出力を，制御器と同じく自車位置の一定時間先（Table~\ref{tab:params}の速度の参照時間）の点で参照した速度列$v_{\mathrm{rec}}(s)$による時間と$T[v_{\mathrm{plan}}]$の差．制御器が実際に参照した速度を用いることで，次の$\Delta T_{\mathrm{track}}$が追従の遅れだけを表すようにする．速度計画の設定値が同じであるから，両者の差は，速度計画に入力された経路（経路生成の出力から平滑化と局所経路計画を経た経路）と走行軌跡の違いによる．これは主に曲率の誤差と認識距離の不足を含むが，平滑化と局所経路計画の影響，分岐での速度抑制，参照点の取り方も含む．平滑化後の経路が曲率を過小に評価すると計画速度は走行軌跡上の値より高くなるため，この項は負になりうる．なお，経路選択の指示に応じて速度計画の上限が変わる分岐での速度抑制は，速度計画の出力にのみ含まれるため，計算上はこの項に入る．結果ではその分を分けて示す．
   \item[$\Delta T_{\mathrm{track}}$（経路追従による時間差）] 移動区間における，実測速度による時間$T[v_{\mathrm{meas}}]$と$T[v_{\mathrm{rec}}]$の差．追従制御の遅れと，追従誤差に伴う減速を表す．
@@ -62,7 +62,7 @@
 次の量は，周回走行中に記録した指令値と応答（閉ループデータ）から同定する．
 \begin{enumerate}
   \item 認識から指令までの遅延：画像の撮影時刻と，その画像に基づく最初の指令値が出力された時刻の差を，周回走行中の全フレームについて求め，平均と95パーセント点で表す．
-  \item 信号とコーンの連続検出の開始距離と停止点の初回発行距離：記録した検出結果から，接近ごとに次の距離を求める．報告距離は検出結果が報告する距離であり，実距離は停止直前（6\,m未満）の近距離の検出から求めた物体の位置と自己位置から求めた前方距離である．連続検出の開始距離は，停止点の初回発行のフレームまで，欠落が2フレーム以内で続く検出の開始時点の距離であり，コーンは報告距離と実距離，信号パネルは実距離で求める．あわせて，停止点が最初に発行された時点での停止点までの距離（初回発行距離）と，停止点から実際に停止した位置までの走行距離（車輪速度の積算）を求め，報告距離が実距離とどの程度異なるかを調べる．
+  \item 信号とコーンの連続検出の開始距離と停止点の初回発行距離：記録した検出結果から，接近ごとに次の距離を求める．報告距離は検出結果が報告する距離であり，実距離は停止直前（6\,m未満）の近距離の検出から求めた物体の位置と自己位置から求めた前方距離である．連続検出の開始距離は，停止点の初回発行のフレームまで，欠落が2フレーム（0.13\,s）以内で続く検出の開始時点の距離であり，コーンは報告距離と実距離，信号パネルは実距離で求める．あわせて，停止点が最初に発行された時点での停止点までの距離（初回発行距離）と，停止点から実際に停止した位置までの走行距離（車輪速度の積算）を求め，報告距離が実距離とどの程度異なるかを調べる．
 \end{enumerate}
 また，周回走行の閉ループデータにも並進速度と操舵の応答を当てはめ，走行試験の値と比べる．周回走行中の指令値は曲率や停止点に応じて連続的に変化するため，この変化を励起として用いる．並進速度は勾配制限を持たない\eqnref{eq:vmodel}を，操舵は制御器が出力した舵角の指令値を$\delta_{\mathrm{cmd}}$とした\eqnref{eq:steermodel}を等価舵角に当てはめ，走行試験と同様に二乗誤差が最小になるようにパラメータを求める．周回走行では指令値の変化が小さく，制御器が車両の状態から指令値を出すため，ゲインと遅れは偏りうる．
 
@@ -82,7 +82,7 @@
 \begin{figure}[H]
   \centering
   \input{images/fig_sil}
-  \caption{Configuration of the closed-loop simulation. The implemented software (path smoothing, Frenet local planner, velocity planning, path following, and stop point generation) is run unchanged; the vehicle, the path generation, and the detection are replaced by models identified from the driving tests and the lap runs.}
+  \caption[Configuration of the closed-loop simulation.]{Configuration of the closed-loop simulation. The implemented software (path smoothing, local path planning, velocity planning, path following, and stop point generation) is run unchanged; the vehicle, the path generation, and the detection are replaced by models identified from the driving tests and the lap runs.}
   \label{fig:sil}
 \end{figure}
 
@@ -109,94 +109,116 @@
 
 \section{設定値}
 \label{sec:params}
-システムとシミュレーションの設定値をTable~\ref{tab:params}にまとめる．\ref{chap:system}章では各要素の構成と式のみを述べたため，各要素の設定値はこの表を参照する．シミュレーションの車両モデル，経路生成の雑音，検知距離の値は，\ref{sec:identification}節と\ref{sec:path_error}節の方法で求めた同定値と，同定値の範囲などを参考に仮に定めた仮定値である．備考に，各値が同定値か仮定値かを示す．
+システムの設定値をTable~\ref{tab:params}に，シミュレーションの設定値をTable~\ref{tab:params_sim}に示す．\ref{chap:system}章では各要素の構成と式のみを述べたため，各要素の設定値はTable~\ref{tab:params}を参照する．Table~\ref{tab:params_sim}の車両モデル，経路生成の雑音，検知距離の値は，\ref{sec:identification}節と\ref{sec:path_error}節の方法で求めた同定値と，同定値の範囲などを参考に仮に定めた仮定値であり，備考に同定値と仮定値の別と，同定値の出典の表を示す．Table~\ref{tab:params}の上限速度の設定値は実車走行R1，B1（\ref{sec:field_method}節）の値であり，シミュレーションでは条件ごとに指定する．
 
-{\scriptsize
-\setlength{\tabcolsep}{4pt}
-\begin{longtable}{L{4.4cm}L{3.4cm}L{7.0cm}}
-  \caption{Parameters of the system and the simulation.}
-  \label{tab:params}\\
-  \toprule
-  項目 & 値 & 備考 \\
-  \midrule
-  \endfirsthead
-  \toprule
-  項目 & 値 & 備考 \\
-  \midrule
-  \endhead
-  \bottomrule
-  \endlastfoot
-    \multicolumn{3}{l}{\textbf{システム}} \\
-    \multicolumn{3}{l}{経路生成（\ref{sec:vision_planner}節）} \\
-    学習に用いる実画像 & 14{,}436枚 & 人手で修正した画像 \\
-    学習に用いる変換画像 & 86{,}600枚 & 生成モデル（Cosmos-Transfer2.5）による天候の変換 \\
-    学習用・検証用の枚数 & 76{,}037枚・24{,}999枚 & 上記の合計を分割 \\
-    \multicolumn{3}{l}{経路の平滑化（\ref{sec:path_smoother}節）} \\
+仮定値の理由と同定値の補足を以下に述べる．並進速度のむだ時間は，同定では和$T_v+\tau_v$のみが確定する（Table~\ref{tab:ident}）ため，和0.26\,sが小ステップの同定範囲（0.19〜0.27\,s）に入る0.05\,sとした．時定数0.21\,sは$T_v=0$のときの当てはめ値である．加速と減速の上限は，当てはめ値（3.95，4.06\,m/s$^2$）を丸めた値であり，物理限界（Table~\ref{tab:phys}）と同じである．操舵のむだ時間は，同定の許容範囲（0〜0.06\,s）内の値とした．操舵の時定数とゲインは，直進時の偏りを切片に含めた等価舵角の当てはめ値である．摩擦限界の横加速度は，走行試験で確認できた4.8\,m/s$^2$（Table~\ref{tab:phys}）より大きい仮定値であり，これを超える分は曲がれないものとする．
+
+経路生成のモデルでは，認識距離9.0\,mを一定とし，フレームの23\,\%で先端を欠落させて5.8\,mにする．フレーム間の相関0.65，0.78は，計測値（先端以外の行0.67，先端の行0.74）を近似した仮定値である．撮影から経路生成の出力までの遅延0.07\,sは仮定値である．実車では撮影から経路生成の出力まで0.010\,s，最初の指令値まで0.069\,sであった（Table~\ref{tab:ident_lap}）．シミュレーションではこの遅延に各処理の周期による遅れが加わるため，実車より遅れが大きい側の設定である．検出モデルの画角は，カメラの水平画角110$^\circ$に対する半角55$^\circ$とし，信号とコーンの検出に適用する．
+
+\begin{table}[H]
+  \centering
+  \caption{Parameters of the system.}
+  \label{tab:params}
+  \small
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{0.85}\begin{tabular}{L{7.2cm}L{4.6cm}L{2.6cm}}
+    \toprule
+    項目 & 値 & 備考 \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{経路生成}（\ref{sec:vision_planner}節）} \\
+    学習に用いる実画像 & 14{,}436枚 & \\
+    学習に用いる変換画像 & 86{,}600枚 & \\
+    学習用・検証用の枚数 & 76{,}037枚・24{,}999枚 & \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{経路の平滑化}（\ref{sec:path_smoother}節）} \\
     時間窓 & 0.15\,s & \\
-    多項式の次数$n$ & 3 & \\
+    多項式の次数$n$ & 3 & \eqnref{eq:smooth} \\
     当てはめ範囲 & 前方12\,m & \\
     出力長 & 前方18\,m（0.2\,m間隔） & \\
-    \multicolumn{3}{l}{局所経路計画（\ref{sec:local_planner}節）} \\
-    合流時間$t_{\mathrm{m}}$ & 1.0\,s & 合流距離は車速とこの時間の積 \\
-    合流距離の下限$L_{\min}$，上限$L_{\max}$ & 4\,m，15\,m & \\
-    合流時の横加速度の上限$a_{y,\mathrm{m}}$ & 1.0\,m/s$^2$ & \\
-    局所経路の長さ & 20\,m & 参照経路の終端まで \\
-    \multicolumn{3}{l}{速度計画（\ref{sec:speed_planner}節）} \\
-    横加速度の上限$a_{y,\max}$ & 3.0\,m/s$^2$ & \\
-    縦加速度の上限$a_{x,\max}$ & 3.0\,m/s$^2$ & \\
-    停止専用の減速度$a_{\mathrm{stop}}$ & 1.5\,m/s$^2$ & \\
-    停止専用の減速度の上限$a_{\mathrm{stop,max}}$ & 4.0\,m/s$^2$ & その減速度では停止できない場合の上限 \\
-    停止点の保持時間 & 0.5\,s & 停止点の発行が途切れてからこの時間を過ぎると，停止点なしとして扱う \\
-    分岐での速度抑制 & 4.0\,m/s & 経路選択の指示が直進以外のあいだの上限速度 \\
-    上限速度の設定値$v_{\mathrm{cap}}$ & R1（\ref{chap:field}章）：4.0\,m/s，B1（\ref{chap:field}章）：4.5\,m/s & シミュレーションでは条件ごとに指定 \\
-    速度の参照時間 & 0.3\,s & 制御器は速度計画の列からこの時間先の値を参照 \\
-    \multicolumn{3}{l}{経路追従制御（\ref{sec:tracker}節）} \\
-    Pure Pursuit法の注視距離の比例係数$k_{\mathrm{d}}$ & 1.2\,s & 注視距離$L_{\mathrm{d}}=k_{\mathrm{d}}v$は3〜5\,mに制限 \\
-    Pure Pursuit法の舵角のゲイン$k_{\delta}$ & 1.8 & 円弧の舵角に掛ける \\
-    MPCの内部モデルの操舵時定数$\tau_{\mathrm{mpc}}$ & 0.22\,s & \\
-    舵角の制限 & $\pm 15^\circ$ & \\
-    \multicolumn{3}{l}{信号と障害物の検出（\ref{sec:perception}節）} \\
-    停止点の位置 & コーンの3.3\,m手前 & \\
-    \multicolumn{3}{l}{処理周期} \\
-    経路生成 & 15\,Hz & カメラの出力周期 \\
-    局所経路計画 & 10\,Hz & 速度計画は局所経路の更新ごと \\
-    経路追従制御 & 20\,Hz & \\
     \midrule
-    \multicolumn{3}{l}{\textbf{シミュレーション}} \\
-    \multicolumn{3}{l}{車両モデル（\ref{sec:sil_vehicle}項）} \\
-    並進速度のむだ時間$T_v$ & 0.05\,s & 仮定値．同定では和$T_v+\tau_v$のみ確定し（Table~\ref{tab:ident}），和0.26\,sは小ステップの同定範囲（0.19〜0.27\,s）内 \\
-    並進速度の一次遅れ$\tau_v$ & 0.21\,s & 同定値（走行試験，Table~\ref{tab:ident}，$T_v=0$のとき） \\
-    並進速度の定常ゲイン$K_v$ & 0.98 & 同定値（走行試験の定常値，Table~\ref{tab:ident}） \\
-    加速の上限 & 4.0\,m/s$^2$ & 同定値（走行試験，3.95\,m/s$^2$）．物理限界（Table~\ref{tab:phys}）と同じ \\
-    減速の上限 & 4.0\,m/s$^2$ & 同定値（走行試験，4.06\,m/s$^2$）．同上 \\
-    操舵のむだ時間$T_\delta$ & 0.05\,s & 仮定値．同定の許容範囲（0〜0.06\,s）内（Table~\ref{tab:ident}） \\
-    操舵の時定数$\tau_\delta$ & 0.23\,s & 同定値（走行試験，等価舵角，Table~\ref{tab:ident}） \\
-    操舵のゲイン$K_\delta$ & 0.96 & 同定値（走行試験，等価舵角，直進時の偏りを含めた回帰，Table~\ref{tab:ident}） \\
-    摩擦限界の横加速度$a_\mu$ & 6\,m/s$^2$ & 仮定値．超える分は曲がれない．走行試験で4.8\,m/s$^2$まで確認（Table~\ref{tab:phys}） \\
+    \multicolumn{3}{l}{\textbf{局所経路計画}（\ref{sec:local_planner}節）} \\
+    合流時間$t_{\mathrm{m}}$ & 1.0\,s & \eqnref{eq:merge} \\
+    合流距離の下限$L_{\min}$，上限$L_{\max}$ & 4\,m，15\,m & \eqnref{eq:merge} \\
+    合流時の横加速度の上限$a_{y,\mathrm{m}}$ & 1.0\,m/s$^2$ & \eqnref{eq:merge} \\
+    局所経路の長さ & 20\,m & \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{速度計画}（\ref{sec:speed_planner}節）} \\
+    横加速度の上限$a_{y,\max}$ & 3.0\,m/s$^2$ & \eqnref{eq:vcurve} \\
+    縦加速度の上限$a_{x,\max}$ & 3.0\,m/s$^2$ & \eqnref{eq:forward} \\
+    停止専用の減速度$a_{\mathrm{stop}}$ & 1.5\,m/s$^2$ & \eqnref{eq:astop} \\
+    停止専用の減速度の上限$a_{\mathrm{stop,max}}$ & 4.0\,m/s$^2$ & \eqnref{eq:astop} \\
+    停止点の保持時間 & 0.5\,s & \ref{sec:perception}節 \\
+    分岐での速度抑制 & 4.0\,m/s & \\
+    上限速度の設定値$v_{\mathrm{cap}}$ & 4.0（R1），4.5（B1）\,m/s & \eqnref{eq:vlimit} \\
+    速度の参照時間 & 0.3\,s & \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{経路追従制御}（\ref{sec:tracker}節）} \\
+    Pure Pursuit法の注視距離の比例係数$k_{\mathrm{d}}$ & 1.2\,s & \eqnref{eq:pp} \\
+    Pure Pursuit法の注視距離の下限，上限 & 3\,m，5\,m & \eqnref{eq:pp} \\
+    Pure Pursuit法の舵角のゲイン$k_{\delta}$ & 1.8 & \eqnref{eq:pp} \\
+    MPCの内部モデルの操舵時定数$\tau_{\mathrm{mpc}}$ & 0.22\,s & \eqnref{eq:mpc} \\
+    舵角の制限$\delta_{\max}$ & $\pm 15^\circ$ & \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{信号と障害物の検出}（\ref{sec:perception}節）} \\
+    停止点の位置 & コーンの3.3\,m手前 & \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{処理周期}} \\
+    経路生成 & 15\,Hz & \\
+    局所経路計画，速度計画 & 10\,Hz & \\
+    経路追従制御 & 20\,Hz & \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Parameters of the simulation.}
+  \label{tab:params_sim}
+  \small
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{0.85}\begin{tabular}{L{6.2cm}L{4.4cm}L{4.0cm}}
+    \toprule
+    項目 & 値 & 備考 \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{車両モデル}（\ref{sec:sil_vehicle}項）} \\
+    並進速度のむだ時間$T_v$ & 0.05\,s & 仮定値 \\
+    並進速度の時定数$\tau_v$ & 0.21\,s & 同定値（Table~\ref{tab:ident}） \\
+    並進速度の定常ゲイン$K_v$ & 0.98 & 同定値（Table~\ref{tab:ident}） \\
+    加速の上限 & 4.0\,m/s$^2$ & 同定値（Table~\ref{tab:phys}） \\
+    減速の上限 & 4.0\,m/s$^2$ & 同定値（Table~\ref{tab:phys}） \\
+    操舵のむだ時間$T_\delta$ & 0.05\,s & 仮定値 \\
+    操舵の時定数$\tau_\delta$ & 0.23\,s & 同定値（Table~\ref{tab:ident}） \\
+    操舵のゲイン$K_\delta$ & 0.96 & 同定値（Table~\ref{tab:ident}） \\
+    摩擦限界の横加速度$a_\mu$ & 6.0\,m/s$^2$ & 仮定値 \\
     ホイールベース$L$ & 0.733\,m & 車両の寸法 \\
     車両の更新周期 & 100\,Hz & \\
-    \multicolumn{3}{l}{経路生成のモデル（\ref{sec:sil_path}項）} \\
-    認識距離 & 9.0\,m & 一定とし，フレームの23\%で経路の先端を欠落させて認識距離5.8\,mにする．同定値（Table~\ref{tab:patherr}） \\
-    横位置の雑音（先端以外の行） & ラプラス分布（尺度0.045\,m，フレーム間の相関0.65）と白色雑音（標準偏差0.03\,m） & 尺度と標準偏差は同定値，相関0.65は仮定値（計測値0.67の近似）（Table~\ref{tab:patherr}） \\
-    横位置の雑音（先端の行） & 上記に加えてラプラス分布（尺度0.28\,m，相関0.78） & 尺度は同定値，相関0.78は仮定値（計測値0.74の近似）（Table~\ref{tab:patherr}） \\
-    撮影から経路生成の出力までの遅延 & 0.07\,s & 仮定値．実車では撮影から経路生成の出力まで0.010\,s，最初の指令値まで0.069\,s（Table~\ref{tab:ident}）．シミュレーションではこの遅延に各処理の周期による遅れが加わるため，実車より遅れが大きい側の設定である \\
-    \multicolumn{3}{l}{検出モデル（\ref{sec:sil_detect}項）} \\
-    コーンの最遠検知距離（実距離） & 17.7\,m & 同定値（Table~\ref{tab:ident}の中央値） \\
-    信号パネルの最遠検知距離（実距離） & 22.9\,m & 同定値（Table~\ref{tab:ident}の中央値） \\
-    画角 & 半角55$^\circ$ & 仮定値．カメラの水平画角110$^\circ$．信号とコーンの検出に適用 \\
-    検出位置の誤差 & コーンの報告距離を実距離に対する比で縮める & 同定値（Table~\ref{tab:range}）．距離誤差なしの条件も比較に用いる．パネルは誤差なし \\
-    信号の色の誤判定 & 3\%（1フレームごと） & 仮定値 \\
-    \multicolumn{3}{l}{評価（\ref{sec:sil_run}項）} \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{経路生成のモデル}（\ref{sec:sil_path}項）} \\
+    認識距離 & 9.0\,m & 同定値（Table~\ref{tab:patherr}） \\
+    先端以外の行：ラプラス分布の尺度 & 0.045\,m & 同定値（Table~\ref{tab:patherr}） \\
+    先端以外の行：フレーム間の相関 & 0.65 & 仮定値 \\
+    先端以外の行：白色雑音の標準偏差 & 0.03\,m & 同定値（Table~\ref{tab:patherr}） \\
+    先端の行：ラプラス分布の尺度 & 0.28\,m & 同定値（Table~\ref{tab:patherr}） \\
+    先端の行：フレーム間の相関 & 0.78 & 仮定値 \\
+    撮影から経路生成の出力までの遅延 & 0.07\,s & 仮定値 \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{検出モデル}（\ref{sec:sil_detect}項）} \\
+    コーンの最遠検知距離（実距離） & 17.7\,m & 同定値（Table~\ref{tab:ident_lap}） \\
+    信号パネルの最遠検知距離（実距離） & 22.9\,m & 同定値（Table~\ref{tab:ident_lap}） \\
+    画角 & 半角55$^\circ$ & 仮定値 \\
+    コーンの報告距離 & 実距離に比を掛ける & 同定値（Table~\ref{tab:range}） \\
+    信号の色の誤判定 & 3\,\%（1フレームごと） & 仮定値 \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{評価}（\ref{sec:sil_run}項）} \\
     シード数 & 5 & \\
     乱数化の対象 & 経路生成の雑音の系列，信号の色の誤判定 & \\
-    1回の走行 & 2周 & ラップタイムは2周目（妥当性の確認は3周） \\
-    完走の判定 & 最大横偏差1.5\,m以内 & 車線中心（真値）に対する値．2.5\,mを超えた時点で打ち切り \\
-\end{longtable}
-}
+    1回の走行 & 2周 & \\
+    完走の判定 & 最大横偏差1.5\,m以内 & \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+\end{table}
 
 \section{シミュレーションの妥当性の確認}
 \label{sec:validation_method}
-閉ループシミュレーションが実車の走行を再現できることを，次の3つで確認する．第一に，記録した入力（経路生成の出力，自己位置）をシミュレーションに与え，局所経路計画の出力が記録と一致することを確かめる．これは実装が同一であることの確認である．第二に，実車で生じた信号停止での停止位置の行き過ぎ（停止線を越えた量を正とする）を，シミュレーションの停止位置の行き過ぎと比較する．第三に，R1，B1と同じ構成（ソフトウェアの設定，コース，上限速度）でシミュレーションを走行させ，ラップタイムと完走を実車と比較する．実車の横偏差は参照経路（平滑化後の経路）に対して，シミュレーションの横偏差は車線中心の真値に対して求めるため，両者は基準が異なり，横偏差は相対的な比較として読む．
+閉ループシミュレーションが実車の走行を再現できることを，次の3つで確認する．第一に，記録した入力（経路生成の出力，自己位置）をシミュレーションに与え，局所経路計画の出力が記録と一致することを確かめる．これは実装が同一であることの確認である．第二に，実車で生じた信号停止での停止位置の行き過ぎ（停止線を越えた量を正とする）を，シミュレーションの停止位置の行き過ぎと比較する．第三に，実車走行のR1，B1（\ref{sec:field_method}節）と同じ構成（ソフトウェアの設定，コース，上限速度）でシミュレーションを走行させ，ラップタイムと完走を実車と比較する．実車の横偏差は参照経路（平滑化後の経路）に対して，シミュレーションの横偏差は車線中心の真値に対して求めるため，両者は基準が異なり，横偏差は相対的な比較として読む．
 
 \section{制約要因の見積もり}
 \label{sec:limit_method}
@@ -234,7 +256,7 @@
 である．$b$は速度計画がカーブの手前の減速に用いる縦加速度の上限$a_{x,\max}$，$d_{\mathrm{vis}}$は経路生成のモデルの認識距離の条件（\ref{sec:sil_path}項）に応じた値，$\kappa$はコースの交差点の曲率とする．
 
 \paragraph{摩擦限界}
-カーブでの横加速度$v^2\kappa_{\mathrm{run}}$（$\kappa_{\mathrm{run}}$は走行した曲率）は，摩擦限界$a_\mu$（Table~\ref{tab:params}）を超えられない．
+カーブでの横加速度$v^2\kappa_{\mathrm{run}}$（$\kappa_{\mathrm{run}}$は走行した曲率）は，摩擦限界$a_\mu$（Table~\ref{tab:params_sim}）を超えられない．
 \begin{equation}
   v^2\kappa_{\mathrm{run}} \le a_\mu
   \label{eq:fric_req}
@@ -259,6 +281,6 @@
 
 \section{実車走行の方法と評価指標}
 \label{sec:field_method}
-実車走行は，追従制御の種別と上限速度の設定を除いて同じ設定で，赤コースと青コースを3周走行させる．本論文では，赤コースで上限速度4.0\,m/sの走行をR1，青コースで上限速度4.5\,m/sの走行をB1と呼ぶ．各走行について，画像，自己位置，各段の経路，速度計画，指令値，従動輪の舵角，駆動輪の回転速度，慣性航法装置の出力，GNSSを記録する．ラップタイムはGNSSで求めた基準線の通過時刻から求める．解析範囲は，自律走行の開始から3周目の基準線の通過まで（それ以前に自律走行を終了した場合は終了まで）とする．解析範囲で操作者の介入（ジョイスティックによる自律走行の解除）も境界の逸脱もない走行を完走と呼ぶ．シミュレーションでの完走の判定は，最大横偏差の閾値で別に定める（\ref{sec:sil_run}項）．
+実車走行は，追従制御の種別と上限速度の設定を除いて同じ設定で，赤コースと青コースを3周走行させる．本論文では，赤コースで上限速度4.0\,m/sの走行をR1，青コースで上限速度4.5\,m/sの走行をB1と呼ぶ．各走行について，画像，自己位置，各段の経路，速度計画，指令値，従動輪の舵角，駆動輪の回転速度，慣性航法装置の出力，GNSSを記録する（記録項目の一覧は付録のTable~\ref{tab:topics}）．ラップタイムはGNSSで求めた基準線の通過時刻から求める．解析範囲は，自律走行の開始から3周目の基準線の通過まで（それ以前に自律走行を終了した場合は終了まで）とする．解析範囲で操作者の介入（ジョイスティックによる自律走行の解除）も境界の逸脱もない走行を完走と呼ぶ．シミュレーションでの完走の判定は，最大横偏差の閾値で別に定める（\ref{sec:sil_run}項）．
 
 評価指標は，3周の合計時間とラップタイム，完走の可否，車線中心に対する横偏差，舵角の指令値の変化率，\ref{sec:decomposition}節の各項である．

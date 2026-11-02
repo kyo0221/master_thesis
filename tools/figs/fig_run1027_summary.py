@@ -27,5 +27,5 @@ fig, ax = plt.subplots(figsize=(6, 4)); sc = ax.scatter(xs, p95, c=dead, cmap='R
 for (n, v, rid, side, dx, *dy), x, y in zip(rows, xs, p95):
     dy = dy[0] if dy else 0
     ax.annotate(rid, (x, y), textcoords='offset points', xytext=(7, dy) if side == 'r' else (-7, dy), ha='left' if side == 'r' else 'right', va='center', fontsize=7)
-ax.set_xlabel('median velocity in autonomous segments [m/s]'); ax.set_ylabel('lateral offset p95 [m]'); cb = plt.colorbar(sc); cb.set_label('IMU dropout [%]'); ax.grid(alpha=0.3)
+ax.set_xlabel('median speed in autonomous segments [m/s]'); ax.set_ylabel('lateral deviation p95 [m]'); cb = plt.colorbar(sc); cb.set_label('IMU dropout [%]'); ax.grid(alpha=0.3)
 plt.tight_layout(); plt.savefig(OUT, dpi=150); plt.close(); print(OUT)

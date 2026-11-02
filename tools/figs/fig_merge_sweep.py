@@ -18,7 +18,7 @@ for j, course in enumerate(['red', 'blue']):
         e95 = [np.mean([r['e_max'] for r in g[(n, course, v)]]) for v in vs]
         ls = '--' if n.startswith('PP') else '-'
         ax[0, j].plot(vs, comp, ls, marker='o', ms=3, c=cols[n], label=labels[n]); ax[1, j].plot(vs, e95, ls, marker='o', ms=3, c=cols[n], label=labels[n])
-    ax[0, j].set_title(f'{course.capitalize()} course'); ax[0, j].set_ylabel('Completion rate (|e| < 1.5 m, 4 seeds)'); ax[1, j].set_ylabel('Maximum lateral deviation [m]'); ax[1, j].set_xlabel('Velocity limit [m/s]')
+    ax[0, j].set_title(f'{course.capitalize()} course'); ax[0, j].set_ylabel('Completion rate (|e| < 1.5 m, 4 seeds)'); ax[1, j].set_ylabel('Maximum lateral deviation [m]'); ax[1, j].set_xlabel('Speed limit [m/s]')
     ax[0, j].set_ylim(-0.04, 1.06); ax[0, j].set_yticks(np.arange(0, 1.01, 0.2))
     for a in ax[:, j]: a.grid(alpha=.3)
 ax[0, 1].legend(fontsize=7, ncol=2, loc='lower center', bbox_to_anchor=(0.5, 0.07))

@@ -27,13 +27,23 @@
 
 \section{システムの構成}
 \label{sec:architecture}
-システムの構成をFig.~\ref{fig:system}に示す．システムは，Sensing，Perception，Localization，Planning，Control，Vehicleの6つのモジュールからなる．Sensingはセンサの出力を各モジュールに渡す．Perceptionはカメラ画像から，交差点での進行方向ごとの目標経路と，信号とコーンの位置から決まる停止点を出力する．Localizationは駆動輪の回転速度と慣性航法装置の姿勢から自己位置を求め，運営提供のトポロジカルマップと自己位置から経路選択の指示を生成する．Planningは，目標経路を時間方向に平滑化した参照経路，障害物を回避する局所経路，局所経路に沿った速度の列を順に生成する．Controlは局所経路と速度の列に追従する並進速度と舵角の指令値を出力し，車体制御系で左右駆動輪の回転速度の指令値に変換してVehicleのモータドライバに送る．各処理はROS~2のノードとして実装し，1つのプロセスで実行する．以下の各節で，各モジュールの処理を述べる．
+システムの構成をFig.~\ref{fig:system}に示す．システムは，Sensing，Perception，Localization，Planning，Control，Vehicleの6つのモジュールからなる．Sensingはセンサの出力を各モジュールに渡す．Perceptionはカメラ画像から，交差点での進行方向ごとの目標経路と，信号とコーンの位置から決まる停止点を出力する．Localizationは駆動輪の回転速度と慣性航法装置の姿勢から自己位置を求め，運営提供のトポロジカルマップと自己位置から経路選択の指示を生成する．Planningは，目標経路を時間方向に平滑化した参照経路，障害物を回避する局所経路，局所経路に沿った速度の列を順に生成する．Controlは局所経路と速度の列に追従する並進速度と舵角の指令値を出力し，車体制御系で左右駆動輪の回転速度の指令値に変換してVehicleのモータドライバに送る．各処理はROS~2のノードとして実装し，1つのプロセスで実行する．Fig.~\ref{fig:example}に，赤コースの信号への接近時とカーブでの，カメラ画像と，PerceptionおよびPlanningの出力（経路生成の出力，参照経路，局所経路，検出した信号パネルとコーン）の例を示す．図中の信号パネルとコーンの位置は検出結果が報告する距離に基づく値であり，遠方ほど実際の距離より近く出る（\ref{chap:field}章のTable~\ref{tab:range}）．以下の各節で，各モジュールの処理を述べる．
 
 \begin{figure}[H]
   \centering
   \input{images/fig_system}
   \caption{Configuration of the autonomous driving system.}
   \label{fig:system}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.47\textwidth]{images/example_signal_cam.png}\hfill
+  \includegraphics[width=0.47\textwidth]{images/example_signal_rviz.png}\\[3pt]
+  \includegraphics[width=0.47\textwidth]{images/example_curve_cam.png}\hfill
+  \includegraphics[width=0.47\textwidth]{images/example_curve_rviz.png}
+  \caption[Examples of the camera image and the outputs of Perception and Planning.]{Examples of the camera image (left) and the outputs of Perception and Planning displayed in rviz (right; top-down view with a 5\,m grid and the vehicle frame at the bottom). Blue: output of the path generation, green: reference path after smoothing, yellow: local path, red and orange markers: detected signal panel and cones. Top: approaching the signal on the red course. Bottom: a curve on the red course.}
+  \label{fig:example}
 \end{figure}
 
 \section{カメラ画像に基づく経路生成}
@@ -58,7 +68,7 @@
   L_{\mathrm{m}} = \mathrm{clip}\left(\max\left(t_{\mathrm{m}} v,\; v\sqrt{\frac{10}{\sqrt{3}}\frac{|d_{\mathrm{lat}}|}{a_{y,\mathrm{m}}}}\right),\; L_{\min},\; L_{\max}\right)
   \label{eq:merge}
 \end{equation}
-ここで$t_{\mathrm{m}}$は合流時間，第2項は，5次多項式で横変位$d_{\mathrm{lat}}$を距離$L$の間に動かすときの横加速度の最大値$(10/\sqrt{3})v^2|d_{\mathrm{lat}}|/L^2$が$a_{y,\mathrm{m}}$以下となる最小の距離である．障害物があるときは，検出した障害物の左右いずれかを通る経路を生成し，回避する側を通過まで保持する．回避による横変位は車線幅の内側に制限する．経路は毎周期，計測した自己位置から再計算する．局所経路の長さは，一定の長さ（Table~\ref{tab:params}）と参照経路の終端までの長さのうち短い方とする．
+ここで$t_{\mathrm{m}}$は合流時間，第2項は，5次多項式で横変位$d_{\mathrm{lat}}$を距離$L_{\mathrm{m}}$の間に動かすときの横加速度の最大値$(10/\sqrt{3})v^2|d_{\mathrm{lat}}|/L_{\mathrm{m}}^2$が$a_{y,\mathrm{m}}$以下となる最小の距離である．障害物があるときは，検出した障害物の左右いずれかを通る経路を生成し，回避する側を通過まで保持する．回避による横変位は車線幅の内側に制限する．経路は毎周期，計測した自己位置から再計算する．局所経路の長さは，一定の長さ（Table~\ref{tab:params}）と参照経路の終端までの長さのうち短い方とする．
 
 \section{曲率と停止点に基づく速度計画}
 \label{sec:speed_planner}

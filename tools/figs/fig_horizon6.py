@@ -23,7 +23,7 @@ for col, (course, title) in enumerate([('red', 'Red course'), ('blue', 'Blue cou
     axes[2, col].axhline(6.0, color=MUTED, lw=0.9, ls=':'); axes[2, col].text(X[0] - 0.1, 6.08, 'grip limit 6 m/s$^2$', fontsize=7.5, color=MUTED, va='bottom')
     axes[0, col].set_title(title, loc='left', fontsize=10.5, fontweight='bold')
     if course == 'red': axes[0, col].set_title('A7 not applicable (no branch)', loc='right', fontsize=8.5, color=MUTED)
-    axes[2, col].set_xlabel('Velocity limit [m/s]'); axes[2, col].set_xticks(X)
+    axes[2, col].set_xlabel('Speed limit [m/s]'); axes[2, col].set_xticks(X)
     axes[0, col].set_ylim(30, 60); axes[0, col].set_xlim(4.8, 9.3); axes[1, col].set_ylim(-8, 112); axes[1, col].set_yticks([0, 50, 100]); axes[2, col].set_ylim(2, 6.8)
     for r in range(3):
         ax = axes[r, col]; ax.yaxis.grid(True, color=GRID, lw=0.7); ax.set_axisbelow(True); ax.axvspan(7.25, 9.4, color='#f1f0ec', zorder=0)

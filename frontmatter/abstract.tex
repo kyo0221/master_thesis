@@ -1,35 +1,37 @@
 \chapter*{概要}
 \thispagestyle{empty}
+\enlargethispage{\baselineskip}
 
 \begin{center}
 {\large 視覚情報に基づく自律走行モビリティの\\ラップタイムを決定する要因の分析}
 \end{center}
 
 {\small\renewcommand{\baselinestretch}{1.1}\selectfont
-人や荷物を運ぶ小型モビリティを，高精度地図やGNSSが使えない構内や屋内外の境界で運用するには，カメラと内界センサだけで走行できることが求められる．AI-Formulaは，LiDARと自作の事前地図の使用を禁止し，GNSSを安全機能以外に使えない条件で，信号・交差点・障害物を含むコースを3周する時間を競う小型モビリティの競技会である．本研究では，この競技に向けて開発した，カメラ画像から目標経路を生成し，曲率に基づく速度計画と経路追従制御によって走行する自律走行システムを対象に，ラップタイムを決定している要因を，要素別・上限速度の段階別に定量化する．まず，走行した軌跡に車両の物理的な限界だけを与えて計算した基準時間を定義し，実測のラップタイムとの差を，上限速度の設定，速度計画，経路生成，経路追従，停止に起因する時間差に分ける方法を，実車走行と閉ループシミュレーションに共通の物差しとして示す．これを実車の赤コース（上限速度の設定値4.0\,m/s）と青コース（4.5\,m/s）の走行に適用したところ，赤コースでは1周73.0\,sのうち基準時間が59.6\%，上限速度の設定値による時間差が29.6\%，信号停止が10.1\%を占め，速度計画と経路生成に由来する時間差は3周の合計で$-0.2$\,sであった．上限速度の設定値4.0\,m/sの段階では，短縮の余地の大部分は上限速度の設定値にある．
+人や荷物を運ぶ小型モビリティの自律走行では，GNSSが使えない環境での自己位置推定にLiDARと事前地図を用いる構成が主流である．しかし，低コストで小型の車両や，地図の整備と更新に手間がかかる構内や屋内外の境界では，カメラと内界センサだけで走行できることが望まれる．AI-Formulaは，LiDARと自作地図の使用を禁止し，信号・交差点・障害物を含むコースの3周の時間を競う小型モビリティの競技会であり，この運用条件を模している．実用には安全な範囲で速度を上げて移動時間を短くする必要があるが，カメラで経路を推定するシステムは速度を上げると失敗が増える．従来の評価は走行の成功率や経路の推定精度が中心であり，ラップタイムがどの要素に由来し，速度を上げたときに何が制約になるかは示されていない．
 
-次に，走行試験で同定した車両応答と，周回走行の記録から求めた経路生成の誤差を組み込んだ閉ループシミュレーションを構築し，実車の2本の走行と同じ構成でラップタイムの差が1\%以内であることを確認したうえで，各要素を置き換えた，または外した場合のラップタイムと完走の可否を比較する．その結果，完走を左右するのは局所経路計画の合流距離であった（15\,mに固定すると青コースの完走は0/5）．信号停止を含まない周回では，Pure Pursuit法はMPCに対してラップタイムの差が0.5\,s以内で完走を変えず，最大横偏差を4〜7倍にした．一方，信号停止を含む赤コースの構成で実測の距離誤差を与えると，MPCは停止1回あたりの時間差が約15\,s（Pure Pursuit法は約7\,s）となり，3周の完走は4/5であった．平滑化の次数，カーブでの認識距離の短縮，経路生成の雑音の除去は，完走を変えず，ラップタイムの差は0.4\,s以内であった．分岐での速度抑制は，青コースで1周あたり3.7\,s（5.5\,m/s）〜4.3\,s（6.0\,m/s）を要する．信号停止は，実測の距離誤差を与えた検出モデルで，4.0〜7.0\,m/sの5/5で停止し，行き過ぎは最大$+0.86$\,mであった．
+本研究は，この競技に向けて開発した，カメラ画像からの経路生成，曲率に基づく速度計画，経路追従制御からなるシステムを対象に，ラップタイムを決める要因を要素別・上限速度の段階別に定量化する．第一に，走行した軌跡に車両の物理限界だけを与えた基準時間を定義し，実測のラップタイムとの差を，上限速度の設定，速度計画，経路生成，経路追従，停止に起因する時間差に分ける方法を，実車走行と閉ループシミュレーションに共通の物差しとして示す．第二に，走行試験で同定した車両応答と周回走行から求めた経路生成の誤差を組み込み，実車のソフトウェアをそのまま用いる閉ループシミュレーションを構築して，要素を置き換えた，または外した条件を比較する．第三に，速度に依存する要求と固定された能力の条件式で段階ごとの制約要因を見積もり，シミュレーションと照合する．
 
-さらに，上限速度の段階ごとの制約要因を，速度に依存する要求と固定された能力を比較する条件式で見積もり，シミュレーションと照合する．時間差の主因は，4.0\,m/sでは上限速度の設定値であり，5.5\,m/sでは青コースの分岐での速度抑制が加わり，青コースの6.0\,m/s以上では抑制となる．条件式は，停止では実距離での見積もりがシミュレーションと矛盾しなかった．カーブの先読みでは，認識距離5〜9\,mの仮定で5.8〜7.5\,m/sを与え，シミュレーションで横加速度が速度計画の上限を超え始める4.5\,m/sより高く，認識距離への依存も再現されなかった．6.0\,m/sを超える結果は，試験で到達を確認した最高速度を超える参考値である．
+実車の赤コース（上限速度の設定値4.0\,m/s）では，1周73.0\,sのうち基準時間が59.6\%，上限速度の設定値による時間差が29.6\%，信号停止が10.1\%を占め，速度計画と経路生成に由来する時間差はほぼなかった．シミュレーションは実車の2本の走行とラップタイムが1\%以内で一致し，完走を左右するのは局所経路計画の合流距離であること，Pure Pursuit法はMPCに対してラップタイムを変えず最大横偏差を4〜7倍にする一方で信号停止ではMPCが1回あたり約15\,sを要すること，分岐での速度抑制が青コースで1周あたり3.7〜4.3\,sを要することを示した．時間差の主因は，4.0\,m/sでは上限速度の設定値であり，5.5\,m/sでは青コースの分岐での速度抑制が同程度に加わり，6.0\,m/s以上では抑制が主になる．カーブの先読みの条件式は5.8〜7.5\,m/sを与え，シミュレーションで横加速度が速度計画の上限を超え始める4.5\,m/sより高い見積もりであった．
+
+\vspace{0.5\zh}
+\noindent キーワード: 自律走行モビリティ，AI-Formula，ラップタイム，速度計画，経路追従，閉ループシミュレーション
 }
-
-\vspace{1\zh}
-キーワード: 自律走行モビリティ，AI-Formula，ラップタイム，速度計画，経路追従，閉ループシミュレーション
 
 \chapter*{Abstract}
 \thispagestyle{empty}
+\enlargethispage{\baselineskip}
 
 \begin{center}
 {\large Analysis of the Factors Determining the Lap Time\\of a Vision-Based Autonomous Vehicle}
 \end{center}
 
-{\small\renewcommand{\baselinestretch}{1.1}\selectfont
-Small autonomous vehicles that carry people and goods often operate where high-definition maps and GNSS are unavailable, and therefore need to drive with a camera and proprioceptive sensors only. AI-Formula is a competition for small vehicles in which LiDAR and self-made prior maps are prohibited, GNSS is allowed only for safety functions, and teams compete on the time of three laps on a course with signals, intersections, and obstacles. This study quantifies, by component and by speed range, what determines the lap time of an autonomous driving system developed for this competition, which generates a target path from camera images and drives with curvature-based velocity planning and path following. First, a reference time is defined by applying only the physical limits of the vehicle to the driven trajectory, and the remainder of the measured lap time is decomposed into the time differences attributable to the upper speed limit, velocity planning, path generation, path following, and stopping; this decomposition is a common measure for real runs and closed-loop simulation. Applied to a red-course run (upper speed limit 4.0\,m/s) and a blue-course run (4.5\,m/s), it shows that on the red course the reference time accounts for 59.6\% of the 73.0\,s lap, the upper speed limit for 29.6\%, and the signal stop for 10.1\%, while velocity planning and path generation sum to $-0.2$\,s over three laps. At 4.0\,m/s, most of the room for shortening the lap time lies in the upper speed limit.
+{\small\renewcommand{\baselinestretch}{1.0}\selectfont
+Where GNSS is unavailable, small autonomous vehicles carrying people and goods usually localize with LiDAR and a prior map, but low-cost, compact vehicles and premises where maps are hard to maintain call for driving with a camera and proprioceptive sensors only. AI-Formula, a small-vehicle competition that bans LiDAR and self-made maps and scores the time of three laps on a course with signals, intersections, and obstacles, models this condition. Camera-based driving fails more often at higher speed, yet evaluations focus on success rate and path accuracy; which component the lap time comes from and what limits it at higher speed remain unknown.
 
-Second, a closed-loop simulation incorporating the vehicle response identified in driving tests and the path-generation error measured in the lap runs is constructed; its lap times are within 1\% of those of the two real runs. The lap time and completion are then compared with each component replaced or removed. Completion is governed by the merge length of the local planner (a fixed merge length of 15\,m completes 0 of 5 runs on the blue course). In laps without a signal stop, Pure Pursuit instead of MPC changes the lap time by 0.5\,s or less without changing completion, but increases the maximum lateral deviation by a factor of 4 to 7. With signal stops on the red course and the measured distance error, MPC takes about 15\,s per stop (Pure Pursuit about 7\,s) and completes three laps in 4 of 5 runs. The smoothing order, shortening the recognition distance in curves, and removing the path-generation noise do not change completion and change the lap time by 0.4\,s or less. The branch speed limit costs 3.7\,s per lap at 5.5\,m/s and 4.3\,s at 6.0\,m/s on the blue course. With the measured distance error, the vehicle stops in 5 of 5 runs at 4.0 to 7.0\,m/s with an overshoot of at most $+0.86$\,m.
+This thesis quantifies, by component and by upper speed limit, the factors determining the lap time of a system developed for this competition. First, the measured lap time is decomposed into a reference time, given only by the physical limits of the vehicle on the driven trajectory, and time differences due to the upper speed limit, velocity planning, path generation, path following, and stopping, as a common measure for real runs and closed-loop simulation. Second, a closed-loop simulation running the actual software with the vehicle response identified in driving tests and the path-generation error measured in lap runs compares conditions with components replaced or removed. Third, the limiting factor at each speed is estimated with conditions comparing speed-dependent requirements with fixed capabilities and checked against the simulation.
 
-Third, the limiting factors at each speed range are estimated with conditions that compare speed-dependent requirements with fixed capabilities, and are checked against the simulation. The upper speed limit dominates at 4.0\,m/s; the branch speed limit is added on the blue course at 5.5\,m/s and becomes the main time difference at 6.0\,m/s and above. The stopping estimate with the true distance does not contradict the simulation, whereas the look-ahead condition gives 5.8 to 7.5\,m/s for recognition distances of 5 to 9\,m, higher than the 4.5\,m/s at which the simulated lateral acceleration begins to exceed the planning limit, and its dependence on the recognition distance is not reproduced. Results above 6.0\,m/s are reference values beyond the maximum speed confirmed in the driving tests.
+On the red course at an upper speed limit of 4.0\,m/s, the reference time, the upper speed limit, and the signal stops account for 59.6, 29.6, and 10.1\% of the real 73.0\,s lap, with almost none from velocity planning or path generation. The simulated lap time agrees with the two real runs within 1\%. The merge length of the local planner governs completion; Pure Pursuit keeps the lap time but increases the maximum lateral deviation 4 to 7 times relative to MPC, whereas MPC loses about 15\,s per signal stop; and the branch speed limit costs 3.7 to 4.3\,s per lap on the blue course. At 4.0\,m/s the upper speed limit dominates the time differences; at 5.5\,m/s the branch speed limit on the blue course becomes comparable, and it dominates at 6.0\,m/s and above. The look-ahead condition gives 5.8 to 7.5\,m/s, above the 4.5\,m/s at which the simulated lateral acceleration first exceeds the planning limit.
+
+\vspace{0.5\zh}
+\noindent Keywords: Autonomous mobility vehicle, AI-Formula, Lap time, Velocity planning, Path following, Closed-loop simulation
 }
-
-\vspace{1\zh}
-Keywords: Autonomous mobility vehicle, AI-Formula, Lap time, Velocity planning, Path following, Closed-loop simulation
