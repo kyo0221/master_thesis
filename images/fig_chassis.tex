@@ -1,0 +1,46 @@
+% 車体制御系の処理の流れ（dell_ws chassis_driver の実装に基づく）
+\begin{tikzpicture}[
+  font=\fontspec{TeX Gyre Heros Cn}\fontsize{8}{8.8}\selectfont,
+  >={Stealth[length=1.6mm,width=1.2mm]},
+  blk/.style={draw=black!85, line width=0.5pt, fill=white, align=center, inner xsep=5pt, inner ysep=4pt, minimum height=0.95cm},
+  sig/.style={font=\fontspec{TeX Gyre Heros Cn}\fontsize{8}{8.8}\selectfont, inner sep=1.5pt},
+  arr/.style={->, line width=0.5pt},
+  grp/.style={draw=black!55, line width=0.5pt, fill=black!4, inner sep=6pt}
+]
+  % ---------- 入力 ----------
+  \node[sig] (in) at (0,0) {Commands from the path following: $v_{\mathrm{cmd}}$ (speed), $\delta_{\mathrm{cmd}}$ (steering angle)};
+  \node[blk, minimum width=5.6cm] (vp) at (0,-1.25) {Velocity planning\\(constant acceleration $a_{\mathrm{ch}}$ toward $v_{\mathrm{cmd}}$)};
+  \draw[arr] (in) -- (vp);
+
+  % ---------- 分岐 ----------
+  \coordinate (j) at (0,-2.2);
+  \draw (vp) -- (j);
+  \node[blk, minimum width=4.6cm] (sl) at (3.9,-3.1) {Steering limit\\$\delta=\mathrm{clip}\bigl(\delta_{\mathrm{cmd}},\ \pm\delta_{\mathrm{lim}}(v)\bigr)$};
+  \node[blk, minimum width=4.6cm] (ws) at (-3.9,-5.0) {Wheel speed calculation\\$\omega_{\mathrm{L}}=\dfrac{2v-T\omega}{2R},\quad \omega_{\mathrm{R}}=\dfrac{2v+T\omega}{2R}$};
+  \node[blk, minimum width=4.6cm] (yc) at (3.9,-5.0) {Yaw rate command\\$\omega=\dfrac{v\tan\delta}{k_{\mathrm{yaw}}L}+v\,u_{\mathrm{PID}}(\delta-\varphi_{\mathrm{f}})$};
+  \draw[arr] (j) -| (sl.north) node[sig, pos=0.25, above] {$v$};
+  \draw[arr] (j) -| (ws.north) node[sig, pos=0.25, above] {$v$};
+  \draw[arr] (j) -| ($(yc.north)+(-1.2,0)$);
+  \draw[arr] (sl) -- (yc) node[sig, midway, right] {$\delta$};
+  \draw[arr] (yc) -- (ws) node[sig, midway, above] {$\omega$};
+
+  % ---------- 従動輪の舵角 ----------
+  \node[blk, minimum width=4.6cm] (enc) at (3.9,-6.9) {Caster angle encoder\\(low-pass filter, $\tau_{\mathrm{f}}=30$\,ms)};
+  \draw[arr] (enc) -- (yc) node[sig, midway, right] {$\varphi_{\mathrm{f}}$};
+
+  % ---------- モータ ----------
+  \node[blk, minimum width=4.6cm] (md) at (-3.9,-6.9) {In-wheel motor drivers\\(left and right wheel speed commands)};
+  \draw[arr] (ws) -- (md) node[sig, midway, right] {$\omega_{\mathrm{L}},\ \omega_{\mathrm{R}}$};
+  \node[blk, minimum width=4.6cm] (fb) at (-3.9,-8.7) {Measured wheel speeds\\$\rightarrow$ body speed $v_{\mathrm{b}}$ (to the localization)};
+  \draw[arr] (md) -- (fb);
+
+  % ---------- ばねプリロード ----------
+  \node[blk, minimum width=4.6cm] (pl) at (3.9,-8.7) {Spring preload control\\$l=l_0$ ($|\delta|<1^\circ$),\ otherwise $\mathrm{clip}\bigl(k\,r_{\mathrm{s}}v_{\mathrm{b}}^{2}\sin|\varphi|,\,0,\,l_0\bigr)$};
+  \draw[arr] (enc) -- (pl) node[sig, midway, right] {$\varphi$};
+  \draw[arr] (fb) -- (pl) node[sig, midway, above] {$v_{\mathrm{b}}$};
+  \draw[arr] (sl.east) -- ++(0.45,0) |- (pl.east) node[sig, pos=0.25, right] {$\delta$};
+  \node[sig, below=3pt of pl.south] {$\rightarrow$ position command to the preload actuator};
+
+  % ---------- 記号 ----------
+  \node[sig, align=center] at (0,-10.0) {$T$: tread,\ $L$: wheelbase,\ $R$: wheel radius,\ $k_{\mathrm{yaw}}$: yaw-rate ratio,\ $r_{\mathrm{s}}$: radius of the spring attachment};
+\end{tikzpicture}

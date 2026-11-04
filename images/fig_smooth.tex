@@ -1,0 +1,51 @@
+% 経路の平滑化の概念図: 時間窓内の経路生成の出力を現在の車両座標系に揃え，多項式を当てはめて外挿する
+\begin{tikzpicture}[
+  x=0.8cm, y=0.8cm,
+  font=\fontspec{TeX Gyre Heros Cn}\fontsize{8}{8.8}\selectfont,
+  >={Stealth[length=1.6mm,width=1.2mm]},
+  lab/.style={font=\fontspec{TeX Gyre Heros Cn}\fontsize{7.5}{8.4}\selectfont, align=center, inner sep=1pt},
+  arr/.style={->, line width=0.5pt},
+  fit/.style={green!55!black, line width=1.0pt},
+  ext/.style={green!55!black, line width=1.0pt, dash pattern=on 2.5pt off 1.5pt},
+  meas/.style={black!70, line width=0.4pt}
+]
+  \pgfmathsetseed{7}
+  % 真の経路形状（点の生成にのみ用いる）: y = 0.025 x^2
+  % 現在と過去 2 フレームの車両位置（進行方向 +x）
+  \foreach \k/\op in {2/0.25, 1/0.5, 0/1.0} {
+    \pgfmathsetmacro{\vx}{-0.9*\k}
+    \begin{scope}[opacity=\op]
+      \draw[fill=black!15, draw=black!70, line width=0.5pt] (\vx-0.45,-0.22) rectangle (\vx+0.45,0.22);
+      \draw[fill=black!60, draw=none] (\vx+0.30,-0.06) -- (\vx+0.45,0) -- (\vx+0.30,0.06) -- cycle;
+    \end{scope}
+  }
+  \node[lab, below=2pt] at (0,-0.25) {Current\\vehicle frame};
+  \node[lab, above=1pt] at (-1.2,0.55) {Previous frames\\(aligned by odometry)};
+  \draw[arr, black!60] (-1.9,0.45) -- (-0.5,0.45);
+
+  % 3 フレーム分の経路生成の出力（マーカーを変えて描く）
+  \foreach \xx in {0.8,1.1,1.4,1.7,2.0,2.4,2.8,3.3,3.9,4.6,5.4,6.6} {
+    \pgfmathsetmacro{\ya}{0.025*\xx*\xx + 0.12*rand}
+    \pgfmathsetmacro{\yb}{0.025*\xx*\xx + 0.12*rand}
+    \pgfmathsetmacro{\yc}{0.025*\xx*\xx + 0.12*rand}
+    \fill[blue!70!black] (\xx,\ya) circle (1.1pt);
+    \draw[blue!70!black, line width=0.5pt] (\xx-0.07,\yb-0.07) rectangle (\xx+0.07,\yb+0.07);
+    \draw[blue!70!black, line width=0.5pt] (\xx,\yc+0.09) -- (\xx-0.08,\yc-0.05) -- (\xx+0.08,\yc-0.05) -- cycle;
+  }
+  \node[lab, text=blue!70!black, anchor=south] at (2.6,1.75) {Output of the path generation\\in the time window (three frames)};
+
+  % 当てはめた多項式（当てはめ範囲）と外挿
+  \draw[fit] plot[domain=0:6.6, samples=40] (\x, {0.025*\x*\x});
+  \draw[ext] plot[domain=6.6:14.0, samples=60] (\x, {0.025*\x*\x});
+  \node[lab, text=green!55!black, anchor=north west] at (8.6,1.3) {Extrapolation of\\the polynomial};
+  \node[lab, text=green!55!black, anchor=north west] at (4.4,0.25) {Fitted polynomial $y(x)$};
+  \node[lab, text=green!55!black, anchor=north east] at (13.9,4.6) {Reference path};
+
+  % 認識距離と当てはめ範囲，出力長
+  \draw[meas] (6.6,-0.9) -- (6.6,2.25);
+  \node[lab, anchor=south] at (6.6,2.3) {Farthest point\\(recognition distance $d_{\mathrm{vis}}$)};
+  \draw[meas, <->] (0,-0.9) -- (8.2,-0.9);
+  \node[lab, below=1pt] at (4.1,-0.9) {Fit range};
+  \draw[meas, <->] (0,-1.5) -- (14.0,-1.5);
+  \node[lab, below=1pt] at (7.0,-1.5) {Output length of the reference path};
+\end{tikzpicture}

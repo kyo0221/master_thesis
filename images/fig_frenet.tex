@@ -1,0 +1,51 @@
+% Frenet 座標系に基づく局所経路計画の概念図（Werling et al. 2010 の図を基に本システムに合わせて作成）
+\begin{tikzpicture}[
+  font=\fontspec{TeX Gyre Heros Cn}\fontsize{8}{8.8}\selectfont,
+  >={Stealth[length=1.6mm,width=1.2mm]},
+  lab/.style={font=\fontspec{TeX Gyre Heros Cn}\fontsize{7.5}{8.4}\selectfont, align=center, inner sep=1pt},
+  ref/.style={green!55!black, line width=1.0pt},
+  cand/.style={black!45, line width=0.5pt},
+  sel/.style={orange!90!black, line width=1.0pt},
+  arr/.style={->, line width=0.5pt}
+]
+  % 車線（白線）
+  \draw[black!30, line width=0.5pt] (-0.3,1.3) .. controls (4,1.5) and (7,2.9) .. (11.5,2.9);
+  \draw[black!30, line width=0.5pt] (-0.3,-1.3) .. controls (4,-1.1) and (7,0.3) .. (11.5,0.3);
+  % 参照経路（平滑化後）
+  \draw[ref] (-0.3,0) .. controls (4,0.2) and (7,1.6) .. (11.5,1.6);
+  \node[lab, text=green!55!black, anchor=north east] at (11.4,1.45) {Reference path\\(after smoothing)};
+
+  % Frenet 座標系 (s, d) を参照経路上の点に置く
+  \coordinate (F) at (3.2,0.27);
+  \draw[arr] (F) -- ++(1.3,0.17) node[lab, right, inner sep=1pt] {$s$};
+  \draw[arr] (F) -- ++(-0.17,1.3) node[lab, above, inner sep=1pt] {$d$};
+  \fill[black] (F) circle (1.0pt);
+
+  % 自車（参照経路から横変位 d_lat）
+  \coordinate (V) at (0.8,0.95);
+  \draw[fill=black!15, draw=black!70, line width=0.5pt, rotate around={3:(V)}] ($(V)+(-0.45,-0.22)$) rectangle ($(V)+(0.45,0.22)$);
+  \draw[fill=black!60, draw=none, rotate around={3:(V)}] ($(V)+(0.30,-0.06)$) -- ($(V)+(0.45,0)$) -- ($(V)+(0.30,0.06)$) -- cycle;
+  \node[lab, above=2pt] at ($(V)+(0,0.22)$) {Vehicle};
+  \draw[black!70, line width=0.4pt, dash pattern=on 1.5pt off 1pt] (V) -- (0.86,0.06);
+  \node[lab, left=1pt] at (0.83,0.5) {$d_{\mathrm{lat}}$};
+
+  % 候補経路（横変位を 5 次多項式で 0 にする，合流距離が異なる）
+  \draw[cand] (V) .. controls (2.0,0.95) and (2.4,0.22) .. (3.6,0.30);
+  \draw[cand] (V) .. controls (3.6,0.95) and (4.4,0.45) .. (7.0,0.95);
+  \draw[sel]  (V) .. controls (2.8,0.95) and (3.2,0.30) .. (5.3,0.50);
+  \node[lab, text=orange!90!black, anchor=north] at (3.3,-0.05) {Candidates (quintic lateral profile);\\the selected local path in orange};
+
+  % 合流距離 L_m（選択した候補）
+  \draw[black!70, line width=0.4pt] (0.8,-0.75) -- (5.3,-0.75);
+  \draw[black!70, line width=0.4pt] (0.8,-0.65) -- (0.8,-0.85);
+  \draw[black!70, line width=0.4pt] (5.3,-0.65) -- (5.3,-0.85);
+  \node[lab, below=1pt] at (3.05,-0.75) {Merge length $L_{\mathrm{m}}$};
+
+  % 障害物と回避の候補（左右いずれかを通る）
+  \coordinate (O) at (8.6,1.42);
+  \draw[fill=orange!80, draw=black!70, line width=0.4pt] ($(O)+(-0.13,-0.12)$) -- ($(O)+(0.13,-0.12)$) -- ($(O)+(0,0.26)$) -- cycle;
+  \node[lab, below=3pt] at (O) {Obstacle};
+  \draw[cand, dash pattern=on 2pt off 1pt] (6.6,1.15) .. controls (7.6,1.25) and (8.0,1.95) .. (8.6,2.0) .. controls (9.2,2.05) and (9.8,1.7) .. (10.6,1.6);
+  \draw[cand, dash pattern=on 2pt off 1pt] (6.6,1.15) .. controls (7.6,1.2) and (8.0,0.85) .. (8.6,0.85) .. controls (9.2,0.85) and (9.8,1.5) .. (10.6,1.6);
+  \node[lab, anchor=south] at (8.6,2.1) {Avoidance candidates};
+\end{tikzpicture}

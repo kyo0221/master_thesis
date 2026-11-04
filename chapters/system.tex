@@ -4,23 +4,29 @@
 
 \section{モビリティとセンサ}
 \label{sec:vehicle}
-対象とするモビリティは，AI-Formula運営から提供される三輪モビリティである．2つの前駆動輪はインホイールモータで駆動され，後輪は従動輪（キャスタ）である．トレッドは0.6\,m，ホイールベースは0.733\,mである．車両の寸法は競技規則で全長2000\,mm，全幅800\,mm，全高600\,mm以内と定められている．従動輪の舵角は駆動輪のトルク差によって決まり，直接は操舵できない．従動輪には舵角を観測するエンコーダ（14\,bit，100\,Hz）が設置されている．従動輪には，藤野\cite{fujino2026}による，トレールとばねプリロード，舵角の可動域を制御する機構が備わっており，本研究ではこれらの機構を固定して用いる．
+対象とするモビリティは，AI-Formula運営から提供される三輪モビリティである．2つの前駆動輪はインホイールモータで駆動され，後輪は従動輪（キャスタ）である．トレッドは0.6\,m，ホイールベースは0.733\,mである．車両の寸法は競技規則で全長2000\,mm，全幅800\,mm，全高600\,mm以内と定められている．従動輪の舵角は駆動輪のトルク差によって決まり，直接は操舵できない．従動輪には舵角を観測するエンコーダ（14\,bit，100\,Hz）が設置されている．従動輪には，旋回軸まわりの復元ばねの取り付け位置をアクチュエータで変位させ，ばねのプリロードを走行中に変化させる機構\cite{yamashita2026si}が備わっている（Fig.~\ref{fig:preload}）．プリロードは，車体制御系（\ref{sec:chassis}節）が従動輪の舵角と車速に応じて制御する．トレールと舵角の可動域の設定\cite{fujino2026}は，本研究では変更しない．
 
-センサは，ステレオカメラ（ZED，640$\times$360画素，15\,Hz，歪み補正済みのカラー画像を使用），GNSS内蔵の慣性航法装置（VectorNav VN-200，IMU，GNSSとも出力20\,Hz），駆動輪の回転速度（CAN経由），従動輪の舵角である．計算機はJetson AGX Orinであり，画像からの推論はTensorRTで実行する．Table~\ref{tab:sensors}に使用するセンサと観測量を示す．自己位置の推定には，駆動輪の回転速度と，慣性航法装置が出力する姿勢を用いる．この姿勢は，装置の内部でGNSSを含む観測から推定されたものである．GNSSの位置は，評価用の参照としてのみ記録する．
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.5\textwidth]{images/preload_mechanism.png}
+  \caption{Variable spring-preload mechanism of the caster wheel. (source: \cite{yamashita2026si})}
+  \label{fig:preload}
+\end{figure}
+
+センサは，ステレオカメラZED X（Stereolabs，640$\times$360画素，15\,Hz，歪み補正済みのカラー画像を使用），GNSS内蔵の慣性航法装置VN-200（VectorNav，IMU，GNSSとも出力20\,Hz），駆動輪の回転速度（CAN経由），従動輪の舵角である．計算機はJetson AGX Orin（NVIDIA）であり，画像からの推論はTensorRTで実行する．Table~\ref{tab:sensors}に使用するセンサを示す．自己位置の推定には，駆動輪の回転速度と，慣性航法装置が出力する姿勢を用いる．この姿勢は，装置の内部でGNSSを含む観測から推定されたものである．GNSSの位置は，評価用の参照としてのみ記録する．
 
 \begin{table}[H]
   \centering
-  \caption{Sensors and observations used in the system.}
+  \caption{Sensors used in the system.}
   \label{tab:sensors}
-  \begin{tabular}{lll}
+  \begin{tabular}{ll}
     \toprule
-    センサ & 観測量 & 用途 \\
+    センサ & 製品・仕様 \\
     \midrule
-    ZEDカメラ & RGB画像 640$\times$360，15\,Hz & 経路生成，信号・障害物の検出 \\
-    VN-200 & 角速度，加速度，姿勢，速度 & 自己位置推定（姿勢） \\
-    駆動輪エンコーダ & 左右車輪の回転速度 & 速度，自己位置推定 \\
-    従動輪エンコーダ & 従動輪の舵角 & 車両応答の同定 \\
-    GNSS（VN-200） & 緯度経度 & 評価用の参照位置のみ \\
+    ステレオカメラ & ZED X（Stereolabs） \\
+    GNSS内蔵の慣性航法装置 & VN-200（VectorNav） \\
+    駆動輪エンコーダ & インホイールモータ内蔵，CAN経由 \\
+    従動輪エンコーダ & アブソリュート，14\,bit，100\,Hz \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -48,7 +54,14 @@
 
 \section{カメラ画像に基づく経路生成}
 \label{sec:vision_planner}
-カメラ画像を直接入力とし，車両座標系の経路を出力する畳み込みニューラルネットワークを用いる．以下，この出力を経路生成の出力（目標経路）と呼び，平滑化後の経路を参照経路，局所経路計画の出力を局所経路と呼ぶ．ネットワークは，画像の縦方向に設けた行ごとに経路が通る横位置を推定する行アンカー形式\cite{qin2020}であり，直進，左折，右折の3つの進行方向に対応する3本の経路と，各経路の有無を同時に出力する．交差点での経路選択の指示は，ネットワークの外で3本のうち1本を選ぶことで与える．出力した画像上の経路点は，カメラの校正値と路面が平面であるという仮定のもとで車両座標系に投影する．
+カメラ画像を直接入力とし，車両座標系の経路を出力する畳み込みニューラルネットワークを用いる．以下，この出力を経路生成の出力（目標経路）と呼び，平滑化後の経路を参照経路，局所経路計画の出力を局所経路と呼ぶ．ネットワークは，画像の縦方向に設けた行ごとに経路が通る横位置を推定する行アンカー形式\cite{qin2020}であり，直進，左折，右折の3つの進行方向に対応する3本の経路と，各経路の有無を同時に出力する．交差点での経路選択の指示は，ネットワークの外で3本のうち1本を選ぶことで与える．出力した画像上の経路点は，カメラの校正値と路面が平面であるという仮定のもとで車両座標系に投影する．ネットワークの構成と入出力をFig.~\ref{fig:network}に示す．カメラ画像の上下に余白を加えた画像を入力し，畳み込みで縮小した特徴を解像度の異なる段から統合したのち，行ごとに列方向の分布を出力し，その期待値を横位置とする．
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{\input{images/fig_network}}
+  \caption[Structure and input/output of the path generation network.]{Structure and input/output of the path generation network. The numbers are the width, height, and channels of each feature map. The output is the horizontal position and the existence of the three paths (straight, left, right) at 23 row anchors.}
+  \label{fig:network}
+\end{figure}
 
 学習データは，実車で収集した画像に対し，GNSSによる姿勢と自作のベクターマップから車線中心を投影して作成した経路を教師とする．GNSSと自作地図について競技規則が禁止するのは走行中の使用であり，オフラインでの教師の作成には用いている．学習には，人手で修正した実画像と，生成モデル（Cosmos-Transfer2.5）による天候の変換で作成した画像を用い，学習用と検証用に分ける．検証の指標が最小となったエポックの重みを採用する．画像の枚数はTable~\ref{tab:params}に示す．
 
@@ -59,16 +72,30 @@
   y(x) = \sum_{k=0}^{n} c_k x^k
   \label{eq:smooth}
 \end{equation}
-で最小二乗法により当てはめて平滑化する．当てはめに用いる点の範囲（当てはめ範囲）は車両の前方に限る．ただし，経路生成が点を出力するのは最遠の点までの前方距離（以下，認識距離）までであり，当てはめ範囲のうち実際に点があるのはそこまでである．平滑化後の経路は，一定の間隔で前方の出力長まで出力するため，最遠の点より先の部分は多項式を延長した外挿である．平滑化した経路を参照経路として局所経路計画に渡す．
+で最小二乗法により当てはめて平滑化する．当てはめに用いる点の範囲（当てはめ範囲）は車両の前方に限る．ただし，経路生成が点を出力するのは最遠の点までの前方距離（以下，認識距離）までであり，当てはめ範囲のうち実際に点があるのはそこまでである．平滑化後の経路は，一定の間隔で前方の出力長まで出力するため，最遠の点より先の部分は多項式を延長した外挿である．平滑化した経路を参照経路として局所経路計画に渡す．処理の概要をFig.~\ref{fig:smooth}に示す．
+
+\begin{figure}[H]
+  \centering
+  \input{images/fig_smooth}
+  \caption[Path smoothing with a time window.]{Path smoothing. The outputs of the path generation in the time window are aligned to the current vehicle frame by the odometry, a polynomial is fitted to the points, and the polynomial is extrapolated beyond the farthest point up to the output length.}
+  \label{fig:smooth}
+\end{figure}
 
 \section{Frenet座標系に基づく局所経路計画}
 \label{sec:local_planner}
-参照経路に沿ったFrenet座標系\cite{werling2010}で，横変位を5次多項式で変化させる候補経路を生成し，曲率，横変位，障害物との距離からなるコストで1本を選ぶ．障害物がないときは，参照経路からの横変位$d_{\mathrm{lat}}$を，合流距離$L_{\mathrm{m}}$の間に0にする経路を生成する．合流距離は車速$v$に比例させ，合流時の横加速度が上限$a_{y,\mathrm{m}}$を超えないように下限を与え，さらに最小値と最大値の範囲に制限する．
+参照経路に沿ったFrenet座標系\cite{werling2010}で，横変位を5次多項式で変化させる候補経路を生成し（Fig.~\ref{fig:frenet}），曲率，横変位，障害物との距離からなるコストで1本を選ぶ．障害物がないときは，参照経路からの横変位$d_{\mathrm{lat}}$を，合流距離$L_{\mathrm{m}}$の間に0にする経路を生成する．合流距離は車速$v$に比例させ，合流時の横加速度が上限$a_{y,\mathrm{m}}$を超えないように下限を与え，さらに最小値と最大値の範囲に制限する．
 \begin{equation}
   L_{\mathrm{m}} = \mathrm{clip}\left(\max\left(t_{\mathrm{m}} v,\; v\sqrt{\frac{10}{\sqrt{3}}\frac{|d_{\mathrm{lat}}|}{a_{y,\mathrm{m}}}}\right),\; L_{\min},\; L_{\max}\right)
   \label{eq:merge}
 \end{equation}
 ここで$t_{\mathrm{m}}$は合流時間，第2項は，5次多項式で横変位$d_{\mathrm{lat}}$を距離$L_{\mathrm{m}}$の間に動かすときの横加速度の最大値$(10/\sqrt{3})v^2|d_{\mathrm{lat}}|/L_{\mathrm{m}}^2$が$a_{y,\mathrm{m}}$以下となる最小の距離である．障害物があるときは，検出した障害物の左右いずれかを通る経路を生成し，回避する側を通過まで保持する．回避による横変位は車線幅の内側に制限する．経路は毎周期，計測した自己位置から再計算する．局所経路の長さは，一定の長さ（Table~\ref{tab:params}）と参照経路の終端までの長さのうち短い方とする．
+
+\begin{figure}[H]
+  \centering
+  \input{images/fig_frenet}
+  \caption[Local path planning in the Frenet frame.]{Local path planning in the Frenet frame along the reference path (adapted from \cite{werling2010}). The candidates bring the lateral offset $d_{\mathrm{lat}}$ to zero within the merge length $L_{\mathrm{m}}$ with a quintic profile, and candidates passing either side of an obstacle are generated for avoidance.}
+  \label{fig:frenet}
+\end{figure}
 
 \section{曲率と停止点に基づく速度計画}
 \label{sec:speed_planner}
@@ -92,7 +119,7 @@
   v_{i+1} &\leftarrow \min\left(v_{i+1}, \sqrt{v_i^2 + 2 a_{x,\max}\Delta s_i}\right) \label{eq:forward}\\
   v_{i} &\leftarrow \min\left(v_{i}, \sqrt{v_{i+1}^2 + 2 a_{x,\max}\Delta s_i}\right) \label{eq:backward}
 \end{align}
-経路の終端では，次の周期で経路が延びることを前提に，終端の曲率から決まる上限をそのまま用いる．停止点は信号認識と障害物検出から与えられる（\ref{sec:perception}節）．交差点の急カーブで横加速度が上限$a_{y,\max}$を超えないように，経路選択の指示が直進以外のあいだは上限速度を下げる（分岐での速度抑制）．速度の列は経路点とともに経路追従制御に渡される．
+経路の終端では，次の周期で経路が延びることを前提に，終端の曲率から決まる上限をそのまま用いる．停止点は信号認識と障害物検出から与えられる（\ref{sec:perception}節）．経路選択の指示が直進以外のあいだは上限速度を下げる（分岐での速度抑制）．これは，分岐の経路が指示の切替後に局所経路へ反映されるため，経路選択箇所のカーブに対する減速を間に合わせるためである．速度の列は経路点とともに経路追従制御に渡される．
 
 \section{経路追従制御}
 \label{sec:tracker}
@@ -113,12 +140,53 @@ Pure Pursuit法は，注視距離$L_{\mathrm{d}}$の先の注視点を通る円�
 
 \section{車体制御系}
 \label{sec:chassis}
-舵角の指令値と並進速度の指令値から，差動二輪モデルで左右駆動輪の回転速度の指令値を生成し，モータドライバに送信する\cite{fujino2026}．
+車体制御系は，経路追従制御が出力する並進速度の指令値$v_{\mathrm{cmd}}$と舵角の指令値$\delta_{\mathrm{cmd}}$を受け取り，左右駆動輪の回転速度の指令値と従動輪のばねプリロードの指令値を一定周期で生成する．処理の流れをFig.~\ref{fig:chassis}に示す．
+
+\begin{figure}[H]
+  \centering
+  \input{images/fig_chassis}
+  \caption[Processing flow of the chassis control.]{Processing flow of the chassis control. The commands from the path following are converted to the left and right wheel speeds through the velocity planning, the steering limit, and the yaw rate command with the caster angle feedback. The spring preload of the caster wheel is controlled from the steering angle and the body speed.}
+  \label{fig:chassis}
+\end{figure}
+
+並進速度は，指令値$v_{\mathrm{cmd}}$に向けて一定の加速度$a_{\mathrm{ch}}$で変化させた内部の速度$v$として扱う．舵角の目標値$\delta$は，指令値を速度に応じた制限値$\delta_{\mathrm{lim}}(v)$（\ref{chap:method}章の\eqnref{eq:steerlimit}）で制限した値である．従動輪は直接は操舵できないため，従動輪の舵角を目標値に合わせる旋回角速度の指令値$\omega$を，運動学による前向き補償と，従動輪の舵角の計測値$\varphi_{\mathrm{f}}$（時定数$\tau_{\mathrm{f}}$の一次のローパスフィルタ後）に対するPID制御で生成する．
+\begin{equation}
+  \omega = \frac{v\tan\delta}{k_{\mathrm{yaw}}L} + v\,u_{\mathrm{PID}}(\delta-\varphi_{\mathrm{f}})
+  \label{eq:yawcmd}
+\end{equation}
+ここで$L$はホイールベース，$k_{\mathrm{yaw}}$は旋回角速度の指令値に対する実際の旋回角速度の比（実測に基づく補正係数），$u_{\mathrm{PID}}$はPID制御器の出力である．PID制御は，速度が低いときと目標値が直進付近（$|\delta|<1^\circ$）のときは働かせない．旋回角速度$\omega$と並進速度$v$から，差動二輪モデルで左右駆動輪の回転速度の指令値
+\begin{equation}
+  \omega_{\mathrm{L}} = \frac{2v - T\omega}{2R},\quad \omega_{\mathrm{R}} = \frac{2v + T\omega}{2R}
+  \label{eq:wheelspeed}
+\end{equation}
+を求め，CANでモータドライバに送る．ここで$T$はトレッド，$R$は駆動輪の半径である．モータドライバから返る左右の回転速度の平均から求めた車体速度$v_{\mathrm{b}}$は，自己位置推定（\ref{sec:localization}節）に渡す．
+
+従動輪のばねプリロードは，旋回時に従動輪に働くコーナリングフォースのモーメントをばねのモーメントで打ち消すため，ばねの圧縮量$l$を舵角と車速に応じて
+\begin{equation}
+  l = \begin{cases} l_0 & (|\delta| < 1^\circ) \\ \mathrm{clip}\left(k\,r_{\mathrm{s}}\,v_{\mathrm{b}}^{2}\sin|\varphi|,\ 0,\ l_0\right) & (\text{otherwise}) \end{cases}
+  \label{eq:preload}
+\end{equation}
+とし，アクチュエータの位置指令に変換する\cite{yamashita2026si}．ここで$\varphi$は従動輪の舵角の計測値，$r_{\mathrm{s}}$は旋回軸からばねの作用点までの半径，$k$はゲイン，$l_0$は直進時の圧縮量である．設定値はTable~\ref{tab:params}に示す．
 
 \section{信号と障害物の検出}
 \label{sec:perception}
-信号パネルとコーンは，カメラ画像に対する物体検出ネットワークで検出し，検出枠の下端を路面に投影して車両座標系の位置を求める．信号が赤と判定されたときは，パネルの前に置かれたコーンの手前に停止点を発行し，青と判定されるまで発行を続ける．コーンは局所経路計画の障害物として扱い，回避できないときは手前に停止点を発行する．停止点は毎フレーム発行し，発行が一定時間（停止点の保持時間，Table~\ref{tab:params}）途切れると，速度計画は停止点なしとして扱う．
+信号パネルとコーンは，カメラ画像に対する物体検出ネットワークで検出する．検出には，DETR系のリアルタイム物体検出ネットワークRF-DETR\cite{rfdetr2025}（Largeモデル）を，実車で収集した画像で学習して用いる．クラスはコーン，動的障害物，赤信号のパネル，青信号のパネルの4つであり，カメラ画像をネットワークの入力解像度に引き伸ばして入力し，スコアが閾値以上の検出枠を採用する（Table~\ref{tab:params}）．推論はTensorRTで実行する．Fig.~\ref{fig:detection}に検出結果の例を示す．検出枠は，コーンでは下端の中央を路面に，パネルでは中央をパネルの高さの水平面に，カメラの校正値を用いて投影し，車両座標系の位置と幅を求める．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.58\textwidth]{images/det_example_full.png}\hfill
+  \includegraphics[width=0.35\textwidth]{images/det_example_crop.png}
+  \caption[Example of the signal and obstacle detection.]{Example of the signal and obstacle detection when approaching the signal on the red course (left: camera image with the detected boxes; right: enlarged view of the white frame). Each label shows the class and the score of the box.}
+  \label{fig:detection}
+\end{figure}信号が赤と判定されたときは，パネルの前に置かれたコーンの手前に停止点を発行し，青と判定されるまで発行を続ける．コーンは局所経路計画の障害物として扱い，回避できないときは手前に停止点を発行する．停止点は毎フレーム発行し，発行が一定時間（停止点の保持時間，Table~\ref{tab:params}）途切れると，速度計画は停止点なしとして扱う．
 
 \section{自己位置推定と経路選択の指示}
 \label{sec:localization}
-自己位置は，駆動輪の回転速度から求めた並進速度と慣性航法装置の姿勢を積分するオドメトリ（デッドレコニング）で求め，地図との照合は行わない．本論文では，この処理を自己位置推定と呼ぶ．青コースでは，運営提供のトポロジカルマップと自己位置から，次の交差点での経路選択（直進・左折・右折）の指示を生成し，\ref{sec:vision_planner}節の3本の経路から1本を選ぶ．赤コースでは常に直進を選ぶ．
+自己位置は，駆動輪の回転速度から求めた並進速度と慣性航法装置の姿勢を積分するオドメトリ（デッドレコニング）で求め，地図との照合は行わない．本論文では，この処理を自己位置推定と呼ぶ．青コースでは，運営提供のトポロジカルマップと自己位置から，次の交差点での経路選択（直進・左折・右折）の指示を生成し，\ref{sec:vision_planner}節の3本の経路から1本を選ぶ．赤コースでは常に直進を選ぶ．トポロジカルマップは，コースの交差点と区間の端点に置かれたノード（緯度経度）と，ノード間の接続（エッジ）だけからなり，車線の形状や白線の位置は含まない．Fig.~\ref{fig:topomap}に，運営提供のトポロジカルマップをrviz上に表示した図を示す．青コースでは，通過するノードの列を設定で与え，各ノードで前後のエッジのなす角から進行方向（直進・左折・右折）を決める．自己位置が次の分岐ノードに一定距離まで近づくと指示をその方向に切り替え，旋回の完了後に直進に戻す．
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/topomap_rviz.png}
+  \caption[Topological map provided by the organizer displayed in rviz.]{Topological map provided by the organizer displayed in rviz (top-down view with a 10\,m grid; east is to the right and north is up). Yellow: nodes (labeled by the last digit of the node ID), gray: edges, blue: the node sequence given for the blue course.}
+  \label{fig:topomap}
+\end{figure}
