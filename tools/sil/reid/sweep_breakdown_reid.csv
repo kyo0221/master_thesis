@@ -1,0 +1,14 @@
+condition,course,first_completion_failure,first_friction_limit,first_half_threshold_or_positive_overshoot,first_ay_mean_over_plan_or_vline_over_1,speed_range
+base,red,,8.5,,5.5,4.0-9.0
+A3,red,,,6.0,6.0,4.0-9.0
+A5,red,4.0,7.5,4.0,4.5,4.0-9.0
+A8e,red,,,,6.0,4.0-9.0
+base,blue,,8.5,,4.5,4.0-9.0
+A7,blue,,7.0,,4.5,4.0-9.0
+A3,blue,,,4.0,4.5,4.0-9.0
+A5,blue,4.0,6.5,4.0,4.0,4.0-9.0
+A8e,blue,,,,4.5,4.0-9.0
+stopbase_b1,red,10.0,,4.0,8.5,4.0-10.0
+stopA2_b1,red,10.0,,4.0,7.5,4.0-10.0
+stopbase_b0,red,,,4.0,6.5,4.0-10.0
+stopA2_b0,red,,,9.0,5.5,4.0-10.0
