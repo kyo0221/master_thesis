@@ -87,7 +87,7 @@ def path_fig():
         ax.plot(x, Z[f'{n}_p95'], color=cols[n], lw=1.0, ls='--')
     ax.axhline(0, color='k', lw=0.6)
     ax.set_xlabel('Forward distance x [m]')
-    ax.set_ylabel('Lateral error [m]')
+    ax.set_ylabel('Lateral fluctuation [m]')
     ax.legend(loc='upper left')
     fig.tight_layout()
     fig.savefig(os.path.join(IMG, 'path_error.png'), dpi=200)

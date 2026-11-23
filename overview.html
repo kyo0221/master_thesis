@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>研究概要｜視覚情報に基づく自律走行モビリティのラップタイムを決定する要因の分析</title>
+<style>
+:root{--fg:#1f2328;--sub:#59636e;--bg:#fff;--card:#f6f8fa;--line:#d1d9e0;--acc:#0969da}
+@media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--sub:#9198a1;--bg:#0d1117;--card:#151b23;--line:#3d444d;--acc:#4493f8}}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;line-height:1.75}
+main{max-width:920px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.6rem;line-height:1.4;margin:0 0 4px}
+h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.sub{color:var(--sub);font-size:.9rem}
+.lead{background:var(--card);border-left:4px solid var(--acc);padding:14px 18px;border-radius:6px;margin:20px 0}
+figure{margin:18px 0;text-align:center}
+figure img{max-width:100%;background:#fff;border:1px solid var(--line);border-radius:6px}
+figcaption{color:var(--sub);font-size:.85rem;margin-top:6px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:12px 0}
+th,td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--sub);font-weight:600}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:16px 0}
+.kpi div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi b{display:block;font-size:1.5rem;line-height:1.3}
+.kpi span{color:var(--sub);font-size:.85rem}
+a{color:var(--acc)}
+ul{padding-left:1.3em}
+</style>
+</head>
+<body>
+<main>
+<h1>視覚情報に基づく自律走行モビリティの<br>ラップタイムを決定する要因の分析</h1>
+<p class="sub">修士論文 研究概要 ／ 本文：<a href="thesis_draft_20261123.pdf">thesis_draft_20261123.pdf</a></p>
+
+<div class="lead">カメラ画像から経路を生成して走る自律走行モビリティについて，1周のラップタイムを「どの要素にどれだけ由来するか」という時間の内訳に分け，上限速度を上げたときにラップタイムを決めている要因を，実車の周回走行と閉ループシミュレーションで調べた．</div>
+
+<figure>
+<img src="images/overview_lap.gif" alt="上限速度 4.0, 5.0, 6.0 m/s の実車走行を同時に再生した図">
+<figcaption>実車の周回走行（青コース，2周目）．上限速度 4.0 / 5.0 / 6.0 m/s の3本を同時に再生．直線では上限速度の差がそのまま開くが，カーブと分岐では3本の速度がほぼ同じになる．</figcaption>
+</figure>
+
+<h2>1. 研究の概要</h2>
+<p>対象は，単眼カメラの画像から畳み込みニューラルネットワークで経路を生成し，速度計画，局所経路計画，経路追従制御（MPC）で走行する小型の自律走行モビリティである．高精度地図や LiDAR による自己位置推定を用いない．周回コース2種類（信号停止のある赤コース，分岐のある青コース）を，上限速度 4.0，5.0，6.0 m/s で走らせた．</p>
+<p>ラップタイムを次の内訳に分ける．車両で確認した性能だけで走った場合の基準時間に，各要素による時間差を足した形である．</p>
+<figure>
+<img src="images/decomp_concept.png" alt="ラップタイムの内訳の概念図">
+<figcaption>ラップタイムの内訳．同じ走行軌跡の上で速度列を置き換えて各項を求める．</figcaption>
+</figure>
+<ul>
+<li><b>計画された速度から計算される項</b>（実測の速度を使わない）：基準時間，上限速度による時間差，速度計画（横加速度の上限）による時間差，経路による時間差（うち分岐での速度抑制の分）</li>
+<li><b>実測の速度に依存する項</b>：速度の追従による時間差，信号停止による時間差</li>
+</ul>
+
+<h2>2. 立ち位置</h2>
+<p>自律走行レースの研究は，高精度な自己位置推定を前提に最小ラップタイムの軌道を求めるものが多い．視覚だけで走る研究は，完走率や横偏差で評価されることが多く，ラップタイムが何で決まるかは分析されていない．準定常のラップタイムシミュレーションは最小ラップタイムを求める方法であり，実走行の時間を要素に分ける方法ではない．本研究は，視覚で走るシステムの実走行のラップタイムを，要素ごとの時間に分けて示す位置にある．</p>
+
+<h2>3. 新規性と貢献</h2>
+<ul>
+<li><b>評価方法</b>：走行した軌跡の上で速度列を置き換え，ラップタイムを要素ごとの時間差に分ける内訳を定義した．実車とシミュレーションに同じ定義で使える．</li>
+<li><b>実車での知見</b>：上限速度を3段階に変えた9本の周回走行で，上限速度を上げたときに残る時間差が何で決まるかを示した．</li>
+<li><b>シミュレーションの適用範囲の明示</b>：実ノードを用いた閉ループシミュレーションを，同定に使っていない実車9本と比べ，再現する量としない量を仕分けたうえで，設定値や要素を変えたときの効果を求めた．</li>
+</ul>
+
+<h2>4. 実験内容</h2>
+<div class="tw"><table>
+<tr><th>実験</th><th>内容</th><th>規模</th></tr>
+<tr><td>実車の周回走行</td><td>赤・青コース，上限速度 4.0 / 5.0 / 6.0 m/s，各約3周</td><td>9本（＋設定の異なる以前の走行2本）</td></tr>
+<tr><td>走行試験</td><td>並進速度と操舵の応答，加減速，横加速度の同定</td><td>2回の試験</td></tr>
+<tr><td>シミュレーション：実車との比較</td><td>実車9本と同じ構成，各30試行</td><td>210本</td></tr>
+<tr><td>シミュレーション：設定値の効果</td><td>横加速度の上限 2.0 / 3.0 m/s²，分岐の速度抑制の有無</td><td>480本</td></tr>
+<tr><td>シミュレーション：要素の置換</td><td>経路追従制御，平滑化，合流距離，経路生成の揺らぎ</td><td>1080本</td></tr>
+<tr><td>シミュレーション：感度</td><td>仮定値と同定値を1項目ずつ変更</td><td>240本</td></tr>
+</table></div>
+
+<h2>5. 結果</h2>
+<div class="kpi">
+<div><b>−20.4 s / −14.7 s</b><span>上限速度 4.0→6.0 m/s でのラップ短縮（赤 / 青，実車）</span></div>
+<div><b>6.1 s / 6.6 s</b><span>青で短縮が目減りした 6.6 s のうち，速度計画の設定値で変わる分</span></div>
+<div><b>0.1〜0.2 s</b><span>経路生成と速度の追従に由来する時間差の増加</span></div>
+<div><b>3.4 m/s²</b><span>設定 2.0 m/s² に対する実測の横加速度の最大</span></div>
+</div>
+
+<figure>
+<img src="images/field_decomp_bars.png" alt="実車のラップタイムの内訳">
+<figcaption>実車のラップタイムの内訳（2周目）．上限速度を上げると上限速度による時間差が減り，速度計画の設定値で変わる分（横加速度の上限，分岐での速度抑制）が残る．</figcaption>
+</figure>
+
+<p><b>(1) 上限速度 6.0 m/s までの短縮を目減りさせているのは，速度計画の設定値である．</b>青コースでは，上限速度による時間差の減少 21.3 s に対しラップの短縮は 14.7 s で，差の 6.6 s のうち 6.1 s は横加速度の上限（2.0 m/s²）と分岐での速度抑制（4.0 m/s）による．経路生成と速度の追従に由来する分の増加は 0.1〜0.2 s であった．</p>
+
+<p><b>(2) 経路生成と速度の追従の影響は，時間ではなく横加速度の超過と経路の切替の遅れとして現れる．</b>設定 2.0 m/s² に対し実測は最大 3.4 m/s² に達し，分岐では指示から経路が切り替わるまでに 2.1〜2.9 s かかった．設定値は，これらに対する余裕として働いている．</p>
+
+<figure>
+<img src="images/field_ay_vs_s.png" alt="実車の横加速度">
+<figcaption>実車の横加速度．上限速度 5.0 m/s 以上で，速度計画の上限 2.0 m/s² を超える区間が現れる．</figcaption>
+</figure>
+
+<p><b>(3) 信号停止の時間の約6割は静止であり，上限速度 4.0 m/s では縦方向 PID の積分項による低速接近が 2.5〜3.8 s 加わる．</b>MPC での信号停止は9回すべて成功した．</p>
+
+<p><b>(4) シミュレーションは，上限速度を変えたときのラップタイムの変化を 0.6 s 以内で再現した．</b>速度の追従の細部，信号停止の低速接近，横加速度の超過の大きさは再現しない．制御器と車両モデルは実車の計画を与えれば実車を再現し，違いは速度計画に入る経路の変動にあった．そのため，シミュレーションは信号停止を含まない周回のラップタイムの変化に限って用いた．</p>
+
+<figure>
+<img src="images/sim_laptime.png" alt="実車とシミュレーションのラップタイム">
+<figcaption>実車とシミュレーションのラップタイム．</figcaption>
+</figure>
+
+<div class="tw"><table>
+<tr><th>シミュレーションで変えた点（青コース，6.0 m/s）</th><th>ラップタイムの変化</th></tr>
+<tr><td>横加速度の上限 2.0 → 3.0 m/s²</td><td>−2.75 s</td></tr>
+<tr><td>分岐での速度抑制なし</td><td>−3.10 s</td></tr>
+<tr><td>経路生成の揺らぎなし</td><td>−0.63 s</td></tr>
+<tr><td>合流距離を 15 m に固定</td><td>完走 10 / 30</td></tr>
+</table></div>
+<p class="sub">上の2つの短縮は足し合わせられない（横加速度の上限を上げると，分岐での速度抑制の分が増える）．完走数は，このシミュレーションの条件の中での比較である．</p>
+
+<figure>
+<img src="images/sim_settings.png" alt="設定値を変えたときのラップタイム">
+<figcaption>速度計画の設定値を変えたときのラップタイム（シミュレーション）．</figcaption>
+</figure>
+
+<h2>6. 適用範囲</h2>
+<p>結果は，上限速度 6.0 m/s 以下，2つのコース，本システムの構成についてのものである．車両の最高速度と横加速度の限界は 6.0 m/s，4.8 m/s² まで確認した範囲で扱った．赤コースの実車走行は各上限速度1本である．</p>
+
+<h2>リポジトリの構成</h2>
+<ul>
+<li><code>thesis.tex</code>，<code>chapters/</code>，<code>frontmatter/</code>，<code>backmatter/</code>：論文の本文（<code>latexmk -lualatex -outdir=out thesis.tex</code>）</li>
+<li><code>images/</code>：図</li>
+<li><code>tools/</code>：解析と図の生成スクリプト</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,583 +1,678 @@
 \chapter{閉ループシミュレーションによる評価}
 \label{chap:contribution}
 \newcommand{\sscell}[2]{{\renewcommand{\arraystretch}{1}\begin{tabular}[c]{@{}c@{}}#1\\[1pt]#2\end{tabular}}}
-本章では，\ref{sec:sil}節の閉ループシミュレーションを用いて，研究目的の2点目と3点目に答える．まず，シミュレーションの結果が実車の走行と近い値になることを，R1，B1との比較で確認する（\ref{sec:sil_validity}節）．次に，各要素を置き換えた，または外した場合のラップタイムと完走の可否を比較して，要素ごとの寄与を求める（\ref{sec:ablation}節）．最後に，上限速度の段階ごとにラップタイムと完走を制約する要因を，速度に依存する要求と固定された能力の比較（条件式，\ref{sec:limit_method}節）とシミュレーションの結果で示す（\ref{sec:bottleneck}節）．
+本章では，実車では試せない条件，すなわち設定値を変えたとき，および要素を置き換えたときのラップタイムと完走の変化を，閉ループシミュレーションで求める（研究のアプローチの3点目）．まず，シミュレーションの構成（\ref{sec:sil}節）と設定値（\ref{sec:params_sim}節）を述べ，上限速度を変えた実車9本との比較で，シミュレーションを用いる範囲を定める（\ref{sec:sil_validity}節）．次に，速度計画の設定値を変えた結果（\ref{sec:sil_effect}節），要素を置き換えた結果（\ref{sec:ablation}節），仮定値と同定値を変えた結果（\ref{sec:sil_sens}節）を示し，考察する（\ref{sec:discussion}節）．実車で分かることは4章で述べており，本章では繰り返さない．
 
-\section{シミュレーションの妥当性}
+\section{閉ループシミュレーションの構成}
+\label{sec:sil}
+実車の周回走行は機会が限られ，速度計画の設定値を変えた走行や，経路生成と経路追従制御の要素を置き換えた走行を，同じ条件で繰り返して比べることはできない．閉ループシミュレーションは，これらを同じ条件の多数の試行で比べ，ラップタイムと完走の変化を求めるために用いる．
+
+経路の平滑化，局所経路計画，速度計画，経路追従制御，停止点の発行の各ノードは，上限速度を変えた9本の走行に用いた版（MPCの入力遅延補償と曲率の平滑化を含む）の実装をそのまま実行し，車両，経路生成，信号とコーンの検出をモデルで置き換える（Fig.~\ref{fig:sil}）．各ノードは実車と同じ処理周期（Table~\ref{tab:params2}）で動作する．
+
+\begin{figure}[H]
+  \centering
+  \input{images/fig_sil}
+  \caption[Configuration of the closed-loop simulation.]{Configuration of the closed-loop simulation. The implemented software (path smoothing, local path planning, velocity planning, path following, and stop point generation) is run unchanged; the vehicle, the path generation, and the detection are replaced by models identified from the driving tests and the lap runs.}
+  \label{fig:sil}
+\end{figure}
+
+\subsection{車両モデル}
+\label{sec:sil_vehicle}
+並進速度は，\ref{sec:ident_test}項で同定した\eqnref{eq:vmodel}のむだ時間，一次遅れ，ゲインで表し，加速度を加速の上限と減速の上限の範囲に制限する．操舵は，\eqnref{eq:steermodel}のむだ時間，一次遅れ，ゲインで等価舵角を表す．舵角の指令値は，実車の車体制御系と同じく，\eqnref{eq:steerlimit}（$a_{\mathrm{lim}}=3.0$\,m/s$^2$，$\delta_{\max}=15^\circ$）で制限して入力する．ヨーレートは等価舵角と速度から
+\begin{equation}
+  r = \frac{v}{L}\tan\delta_{\mathrm{eq}},\qquad |r| \le \frac{a_\mu}{v}
+  \label{eq:yawrate}
+\end{equation}
+で求める．横加速度が摩擦限界$a_\mu$を超える分は曲がれないものとし，ヨーレートを$a_\mu/v$で飽和させる．車体の位置と姿勢は，速度とヨーレートの積分で更新する．各ノードに渡す自己位置は，車体の真の姿勢と，車輪速の読みの積分で求めた位置である．車輪速の読みは，速度が0.25\,m/s未満のとき0とする．実車の車輪速は片輪19\,rpm（車輪半径0.1265\,mで0.25\,m/s）未満で0になる（\ref{sec:stop_real}節）．実車の読みは両輪の平均で約0.13\,m/s刻みの値をとるが，シミュレーションは片輪ごとの0を模さない．
+
+\subsection{経路生成のモデル}
+\label{sec:sil_path}
+経路生成は，車両の位置と姿勢の真値に対して，コースの車線中心から車両前方の認識距離までを切り出し，\ref{sec:path_error}節で計測した揺らぎの分布に従う雑音を加えて経路生成の出力とする．経路生成の出力は前方距離ごとの点（行）の列であり，各行の横位置に雑音を加える．先端以外の行には，行に共通のラプラス分布の雑音（フレーム間に自己相関を持たせる）と，行ごとの白色雑音を加える．先端の行には，これらに加えて，さらに大きなラプラス分布の雑音（同じく自己相関あり）を加える．認識距離は9.0\,m一定とし，一定の割合のフレームで先端を欠落させて認識距離を5.8\,mにする．欠落はフレームごとに独立に与える．モデルで加える量は「雑音」と呼び，その大きさは\ref{sec:patherr_result}項の「揺らぎ」の計測値に対応する．揺らぎの値はR1とB1の計測値であり，上限速度によらない．上限速度を変えた9本で計測した先端以外の行の揺らぎは，R1とB1の1.1〜1.7倍であり，認識距離の中央値は9.0\,mではなく8.3\,mである（\ref{sec:patherr_result}項）．これらの違いの影響は\ref{sec:sil_sens}節で示す．青コースの交差点では，経路生成のモデルは，経路選択の指示と同時に分岐側の車線中心を出力する．局所経路計画は実装のまま動く．経路選択の指示は，交差点の位置から20\,m以内で出し，旋回が60$^\circ$に達すると直進に戻す．雑音を加えない理想的な経路生成は，比較の条件として設定でき，\ref{sec:ablation}節で用いる．
+
+\subsection{信号と障害物の検出モデル}
+\label{sec:sil_detect}
+信号パネルとコーンは，最遠の検知距離（実距離）とカメラの画角の内側にあるときに毎フレーム検出されるものとし，信号の色の誤判定を1フレームあたり一定の確率で与える．検知距離は，\ref{sec:identification}節で計測した連続検出の開始距離（実距離）の中央値とする．コーンの報告距離は，\ref{sec:identification}節で計測した実距離に対する報告距離の比を掛けて縮める（実測の距離誤差）．パネルの位置には誤差を入れない．停止点はコーンの報告距離の手前に発行されるため，速度計画は報告距離に基づいて動き，車両が近づくにつれて報告距離が実距離に近づく過程も含めて再現される．信号は赤で始まり，車両の車輪速が0.05\,m/s未満になってから6.2\,s後に青に変わり，各周で赤に戻る．青に変わるまでの時間は信号の操作という入力であり，6.2\,sは，上限速度を変えた9本の9回の停止について，車輪速が0.05\,m/s未満になってから青の検出までの時間の平均を与えた値である．このため，静止の時間は\ref{sec:sil_validity}節の比較の対象から外す．検出結果に対する停止点の発行と障害物回避は，実装をそのまま動かす．
+
+\subsection{試行の乱数，完走の判定，統計の扱い}
+\label{sec:sil_run}
+乱数化の対象は，経路生成の雑音の系列と，信号の色の誤判定である．周回の区切りは開始線の通過とする．1周目は発進を含むため，ラップタイムには2周目を用いる．実車との比較（\ref{sec:sil_validity}節）は実車と同じ3周（赤は各周に信号停止1回），設定値と要素の比較（\ref{sec:sil_effect}節以降）は信号停止を含まない2周を走行させる．同じ条件を，乱数の系列を変えて30回走行させ（以下，各回を試行と呼ぶ），結果は試行間のばらつきとともに示す．\ref{sec:sil_sens}節だけは10試行である．
+
+完走は，規定の周数を走行し，車線中心（真値）に対する最大横偏差が1.5\,m以内であることで判定する．閾値の1.5\,mは，車線幅4.0\,mの半分から車両の全幅の上限0.8\,mの半分を引いた1.6\,mを切り下げた値であり，最大横偏差が2.5\,mを超えた時点で走行を打ち切る．この判定は，真の車線中心に対する絶対値であり，条件間で完走数が変わる向きを見るために用いる．実車の横偏差は参照経路（平滑化後の経路）に対して求めるため，シミュレーションの横偏差とは基準が異なり，本章の横偏差は条件間の相対的な比較として読む．ラップタイムと内訳は完走した試行だけで求める．
+
+30試行の比較は，平均$\pm$標準偏差と，実車の同条件2本の差に対する大きさで述べる．実車の同条件2本の差は，青コースの上限速度4.0，5.0，6.0\,m/sで0.57，0.31，1.51\,sである．実車との比較に用いる許容幅は\ref{sec:sil_validity}節で定める．完走数の差は，Wilsonの方法による95\,\%信頼区間が重ならない組に限って述べる．
+
+\section{シミュレーションの設定値}
+\label{sec:params_sim}
+シミュレーションの設定値をTable~\ref{tab:params_sim}，\ref{tab:params_sim2}に示す．標準構成は，上限速度を変えた9本の走行の構成である．車両モデルの値は走行試験Aの同定値であり，経路生成と検出のモデルの値はR1とB1から同定した値である．備考に，同定値の出典と，同定できなかった値（仮定値）を示す．仮定値と，走行試験Bの同定値は，\ref{sec:sil_sens}節で変えて感度を示す．
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Parameters of the simulation.}
+  \label{tab:params_sim}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{0.85}\begin{tabular}{L{6.2cm}L{3.6cm}L{4.8cm}}
+    \toprule
+    項目 & 値 & 備考 \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{標準構成の設定値}（上限速度を変えた9本）} \\
+    経路追従制御 & MPC（縦方向のPID制御あり） & Table~\ref{tab:params2} \\
+    横加速度の上限$a_{y,\max}$ & 2.0\,m/s$^2$ & Table~\ref{tab:params} \\
+    縦加速度の上限$a_{x,\max}$ & 3.0\,m/s$^2$ & Table~\ref{tab:params} \\
+    分岐での速度抑制 & 4.0\,m/s（青コース） & Table~\ref{tab:params} \\
+    停止専用の減速度$a_{\mathrm{stop}}$，その上限 & 3.0\,m/s$^2$，4.0\,m/s$^2$ & Table~\ref{tab:params} \\
+    舵角の制限の横加速度$a_{\mathrm{lim}}$ & 3.0\,m/s$^2$ & Table~\ref{tab:params2} \\
+    上限速度$v_{\mathrm{cap}}$ & 4.0，5.0，6.0\,m/s & \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{車両モデル}（\ref{sec:sil_vehicle}項）} \\
+    並進速度の時定数$\tau_v$ & 0.21\,s & 同定値（走行試験A，Table~\ref{tab:ident}） \\
+    並進速度の定常ゲイン$K_v$ & 0.98 & 同定値（走行試験A，Table~\ref{tab:ident}） \\
+    並進速度のむだ時間$T_v$ & 0.05\,s & 仮定値．和$T_v+\tau_v$は0.26\,s（同定値はA 0.21\,s，B 0.30〜0.33\,s） \\
+    加速の上限，減速の上限 & 4.0\,m/s$^2$，4.0\,m/s$^2$ & 確認性能（Table~\ref{tab:phys}） \\
+    操舵の時定数$\tau_\delta$ & 0.23\,s & 同定値（走行試験A，Table~\ref{tab:ident2}） \\
+    操舵のゲイン$K_\delta$ & 0.96 & 同定値（走行試験A，Table~\ref{tab:ident2}） \\
+    操舵のむだ時間$T_\delta$ & 0.05\,s & 仮定値（同定の許容範囲は0〜0.06\,s） \\
+    摩擦限界の横加速度$a_\mu$ & 6.0\,m/s$^2$ & 仮定値（確認性能は4.8\,m/s$^2$） \\
+    車輪速の読みを0にする速度 & 0.25\,m/s未満 & 実車の片輪19\,rpm未満 \\
+    ホイールベース$L$，更新周期 & 0.733\,m，100\,Hz & 車両の寸法 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{標準構成の設定値のうち，Table~\ref{tab:params}，\ref{tab:params2}に示した他の項目も走行時と同じである．}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Parameters of the simulation (continued).}
+  \label{tab:params_sim2}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{0.85}\begin{tabular}{L{6.2cm}L{3.6cm}L{4.8cm}}
+    \toprule
+    項目 & 値 & 備考 \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{経路生成のモデル}（\ref{sec:sil_path}項）} \\
+    認識距離 & 9.0\,m & 同定値（Table~\ref{tab:patherr}）．9本の中央値は8.3\,m \\
+    先端の欠落の割合（認識距離5.8\,m） & 23\,\% & 同定値（Table~\ref{tab:patherr}） \\
+    先端以外の行：ラプラス分布の尺度 & 0.045\,m & 同定値（Table~\ref{tab:patherr}） \\
+    先端以外の行：白色雑音の標準偏差 & 0.03\,m & 同定値（Table~\ref{tab:patherr}） \\
+    先端以外の行：フレーム間の相関 & 0.65 & 仮定値（計測値0.67） \\
+    先端の行：ラプラス分布の尺度 & 0.28\,m & 同定値（Table~\ref{tab:patherr}） \\
+    先端の行：フレーム間の相関 & 0.78 & 仮定値（計測値0.74） \\
+    撮影から経路生成の出力までの遅延 & 0.07\,s & 仮定値（実車は0.010\,s，最初の指令値まで0.069\,s，Table~\ref{tab:ident_lap}） \\
+    処理周期 & 15\,Hz & Table~\ref{tab:params2} \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{検出モデル}（\ref{sec:sil_detect}項）} \\
+    コーンの最遠検知距離（実距離） & 17.7\,m & 同定値（Table~\ref{tab:ident_lap}） \\
+    信号パネルの最遠検知距離（実距離） & 22.9\,m & 同定値（Table~\ref{tab:ident_lap}） \\
+    コーンの報告距離 & 実距離に比を掛ける & 同定値（Table~\ref{tab:range}） \\
+    画角 & 半角55$^\circ$ & 仮定値 \\
+    信号の色の誤判定 & 3\,\%（1フレームごと） & 仮定値 \\
+    信号が青に変わるまでの時間 & 停止から6.2\,s & 入力．9本の9回の停止の平均 \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{評価}（\ref{sec:sil_run}項）} \\
+    試行数 & 30（\ref{sec:sil_sens}節は10） & \\
+    乱数化の対象 & 経路生成の雑音の系列，信号の色の誤判定 & \\
+    完走の判定 & 規定の周数，最大横偏差1.5\,m以内 & \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{シミュレーションのコースの周長は，赤258.6\,m，青255.4\,mである．}
+\end{table}
+
+並進速度と操舵の値は，Table~\ref{tab:ident}，\ref{tab:ident2}の走行試験Aの列の値である．シミュレーションの並進速度のモデルは，指令値を入力として加速と減速の上限を持つ構造であり，この構造で上限を同時に同定したのは走行試験Aだけである．走行試験Bの値の一部を用いた結果は\ref{sec:sil_sens}節に示す．並進速度のむだ時間は，同定では和$T_v+\tau_v$のみが確定する（Table~\ref{tab:ident}）ため，小ステップの同定範囲（0.19〜0.27\,s）に和が入る0.05\,sとした．操舵のむだ時間は，同定の許容範囲（0〜0.06\,s）内の値とした．摩擦限界の横加速度は，走行試験で確認できた4.8\,m/s$^2$（Table~\ref{tab:phys}）より大きい仮定値であり，これを超える分は曲がれないものとする．撮影から経路生成の出力までの遅延は，シミュレーションでは各処理の周期による遅れが加わるため，実車より遅れが大きい側の設定である．画角は，カメラの水平画角110$^\circ$に対する半角55$^\circ$であり，信号とコーンの検出にだけ適用する．
+
+\section{実車との比較}
 \label{sec:sil_validity}
-シミュレーションの車両モデル，経路生成のモデル，検出モデルの設定値はTable~\ref{tab:params_sim}のとおりである．信号停止の検出は，報告距離を実距離と同じとする条件（距離誤差なし）と，報告距離に実距離に対する比（Table~\ref{tab:range}，遠方ほど小さい）を掛ける条件（実測の距離誤差あり）の2通りで走行させた．いずれも5シードである．\ref{sec:validation_method}節の3点で妥当性を確認する．
+上限速度を変えた実車9本は，シミュレーションの同定に用いていない走行である．これと同じ構成（Table~\ref{tab:params_sim}の標準構成）で，赤コースは3周（各周に信号停止1回），青コースは3周を，上限速度4.0，5.0，6.0\,m/sについて30試行ずつ走行させ，2周目のラップタイムと内訳を実車と比べる．内訳は，\ref{sec:decomposition}節と同じ定義，同じ確認性能（Table~\ref{tab:phys}）で，シミュレーションの走行記録にも適用する．完走した試行だけで平均と標準偏差を求める．赤コースの完走は，30試行のうち上限速度4.0，5.0，6.0\,m/sで23，26，23であり，青コースは90試行すべてが完走した．
 
-第一に，記録した経路生成の出力（目標経路）と自己位置を入力として与えたところ，局所経路計画の出力は記録との差が0.05\,m以内であった．これは実装が同一であることの確認であり，車両モデルの妥当性を示すものではない．
+比較の許容幅は，実車の同条件2本の差（青コース）と，静止発進を含まない2周目以降の周ごとの値の幅（完全な周が2周以上ある走行の，周ごとの最大と最小の差の平均）の大きい方とする．赤コースは，2周目以降の完全な周が2周ある走行がR60だけであり，R60の幅を赤の3条件に用いる．項目ごとに，シミュレーションの平均と実車の同条件の平均の差が許容幅の内側にあるとき，一致とする．2周目の内訳をTable~\ref{tab:sim_real}に，項ごとの差をTable~\ref{tab:sim_diff}に，上限速度を変えたときの変化をTable~\ref{tab:sim_change}に，ラップタイムをFig.~\ref{fig:sim_laptime}に，項目ごとの一致数と差の範囲をTable~\ref{tab:sim_verdict}に示す．
 
-第二に，R1と同じ構成（実測の距離誤差あり．各周で信号を赤に戻し，停止の3\,s後に青にした）で，信号停止の行き過ぎ（停止線を越えた量を正）を実車と比較した（Table~\ref{tab:validity}）．シミュレーションの行き過ぎは3回の停止ともシードによらず同じ値（$-0.33$\,m）であり，実車と同様に，停止線の前後0.7\,m以内に収まる．停止点の初回発行距離$d_0$は，シミュレーションで約6.8\,m，実車で約7.0\,mである（\ref{sec:stop_result}項）．一方，行き過ぎの符号は再現していない．シミュレーションは3回とも停止線の手前で止まったのに対し，実車は3回のうち2回が停止線を越えた．実車の停止ごとのばらつきも再現していない．理由の候補は，実車で生じた停止点の発行の途切れ（\ref{sec:run4}節）をシミュレーションが模していないことであるが，確かめていない．
-
-第三に，R1とB1と同じ構成でシミュレーションを走行させ，ラップタイムと内訳を実車と比較した（Table~\ref{tab:validity}）．R1相当の平均ラップタイムは72.7\,sで，実車の73.0\,sとの差は約0.4\,\%である．実車の周ごとの差は主に信号の表示時間による停止の時間差（\ref{sec:decomp_result}節）によるもので，信号の表示時間が一定のシミュレーションでは，周ごとの差は0.9\,s以内である．B1相当では，比較できる2周とも，実車との差が0.2\,s以内であった．
-
-\ref{sec:decomposition}節の内訳をシミュレーションの走行記録にも同じ定義で適用し，実車の1周あたりの内訳と比べた（Table~\ref{tab:validity_decomp}）．各項の差は，R1相当，B1相当とも1\,s以内であり，近い値である．差が最も大きいのは$\Delta T_{\mathrm{track}}$で，シミュレーションの方が0.7〜0.8\,s大きい．追従の項の差は，走行試験で同定した並進速度の定常ゲイン（0.98）が，周回走行の値（約0.99）より小さいことによるとみられるが，確かめていない．
-
-以上から，シミュレーションのラップタイムと内訳は，R1とB1の構成で実車に近い値になった．一方，信号停止の行き過ぎの符号と停止ごとのばらつきは再現していない．また，横偏差は，シミュレーションでは車線中心の真値に対して，実車では参照経路に対して求めるため基準が異なる．シミュレーションの横偏差は，R1相当では実車より大きく，B1相当では小さい（Table~\ref{tab:validity}）．したがって本章の横偏差は絶対値ではなく，条件間の相対的な比較として読む．
-
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
-  \caption[Simulation in the configurations of R1 and B1 compared with the real runs.]{Lap time, stop overshoot, and lateral deviation of the simulation in the configurations of R1 and B1 (5 seeds, mean$\pm$SD for laps) compared with the real runs.}
-  \label{tab:validity}
-  \scriptsize
-  \setlength{\tabcolsep}{2.5pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{3.6cm}cccL{3.1cm}cL{1.0cm}}
+  \caption[Breakdown of the lap time of the second lap in the simulation and the real runs.]{Breakdown of the lap time of the second lap in the simulation (mean of completed trials) and in the nine real runs (signed, in seconds). The simulation column of $T_{\mathrm{lap}}$ is mean$\pm$SD.}
+  \label{tab:sim_real}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{2pt}\begin{tabular}{llrrrrrrrrrr}
     \toprule
-    構成 & 1周目 [s] & 2周目 [s] & 3周目 [s] & \shortstack[l]{行き過ぎ [m]\\停止1/2/3} & \shortstack{横偏差 [m]\\95パーセント点\ /\ 最大} & 完走 \\
+    & & & \multicolumn{5}{c}{計画された速度から計算} & \multicolumn{2}{c}{実測に依存} & \\
+    \cmidrule(lr){4-8}\cmidrule(lr){9-10}
+    条件 & 行 & $T_{\mathrm{lap}}$ & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{cap}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{branch}}$ & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\$-\Delta T_{\mathrm{branch}}$} & $\Delta T_{\mathrm{track}}$ & $\Delta T_{\mathrm{stop}}$ & \shortstack[r]{経路・\\追従の和} \\
     \midrule
-    \multicolumn{7}{l}{\textbf{赤コース（R1相当，上限4.0\,m/s，信号停止3回）}} \\
-    Pure Pursuit法，距離誤差あり & $73.3\pm 0.3$ & $72.5\pm 0.5$ & $72.4\pm 0.4$ & $-0.33$/$-0.33$/$-0.33$ & 0.37 / 0.63 & 5/5 \\
-    Pure Pursuit法，距離誤差なし & $72.9\pm 0.9$ & $71.7\pm 0.4$ & $71.8\pm 0.5$ & $-0.29$/$-0.21$/$-0.25$ & 0.36 / 0.45 & 5/5 \\
-    MPC，距離誤差あり & $81.9\pm 0.7$ & $80.3\pm 0.3$ & $80.7\pm 0.4$ & $+0.82$/$+0.74$/$+0.74$ & 0.08 / 0.83 & 4/5 \\
-    MPC，距離誤差なし & $77.2\pm 0.5$ & $72.9\pm 0.5$ & $73.5\pm 1.2$ & $+0.10$/$-0.33$/$-0.25$ & 0.08 / 0.63 & 4/5 \\
-    実車R1（Pure Pursuit法） & 72.3 & 77.3 & 69.4 & $+0.22$/$-0.24$/$+0.65$ & 0.26 / 0.48 & 3周 \\
-    \midrule
-    \multicolumn{7}{l}{\textbf{青コース（B1相当，上限4.5\,m/s）}} \\
-    MPC & $60.5\pm 0.2$ & $59.6\pm 0.0$ & $59.6\pm 0.0$ & --- & 0.08 / 0.15 & 5/5 \\
-    実車B1（MPC） & 60.5 & 59.8 & (58.4) & --- & 0.37 / 0.86 & 2.97周 \\
+    赤\,4.0 & シミュレーション & 76.0$\pm$ 0.6 & 43.1 & +21.6 & 0.0 & 0.0 & 0.0 & +1.2 & 10.1 & +1.2 \\
+     & 実車R40 & 77.4 & 43.5 & +21.7 & 0.0 & 0.0 & +0.1 & +0.4 & 11.8 & +0.4 \\
+    \addlinespace[3pt]
+    赤\,5.0 & シミュレーション & 63.8$\pm$ 0.7 & 43.1 & +8.6 & +0.1 & 0.0 & +0.4 & +0.6 & 11.0 & +1.0 \\
+     & 実車R50 & 62.7 & 43.6 & +8.7 & +0.1 & 0.0 & +1.1 & $-$0.7 & 9.8 & +0.5 \\
+    \addlinespace[3pt]
+    赤\,6.0 & シミュレーション & 56.4$\pm$ 0.8 & 43.1 & 0.0 & +0.8 & 0.0 & +1.2 & +0.1 & 11.2 & +1.3 \\
+     & 実車R60 & 57.1 & 43.6 & 0.0 & +1.0 & 0.0 & +2.3 & $-$1.7 & 11.7 & +0.7 \\
+    \addlinespace[3pt]
+    青\,4.0 & シミュレーション & 66.2$\pm$ 0.1 & 42.6 & +21.2 & +0.2 & 0.0 & +1.1 & +1.0 & 0.0 & +2.2 \\
+     & 実車B40a & 66.5 & 43.4 & +21.3 & +0.6 & 0.0 & +0.9 & +0.3 & 0.0 & +1.2 \\
+     & 実車B40b & 65.9 & 43.3 & +21.3 & +0.5 & $-$0.2 & +0.5 & +0.1 & 0.5 & +0.5 \\
+    \addlinespace[3pt]
+    青\,5.0 & シミュレーション & 57.0$\pm$ 0.1 & 42.6 & +8.5 & +1.2 & +2.4 & +1.7 & +0.6 & 0.0 & +2.3 \\
+     & 実車B50a & 56.5 & 43.3 & +8.4 & +1.5 & +2.0 & +1.6 & $-$0.3 & 0.0 & +1.3 \\
+     & 実車B50b & 56.8 & 43.5 & +8.3 & +1.8 & +1.9 & +1.7 & $-$0.4 & 0.0 & +1.3 \\
+    \addlinespace[3pt]
+    青\,6.0 & シミュレーション & 52.2$\pm$ 0.2 & 42.6 & 0.0 & +3.3 & +3.5 & +2.5 & +0.3 & 0.0 & +2.8 \\
+     & 実車B60a & 50.8 & 43.6 & 0.0 & +3.8 & +2.9 & +2.5 & $-$2.0 & 0.0 & +0.5 \\
+     & 実車B60b & 52.3 & 44.0 & 0.0 & +3.3 & +3.1 & +4.1 & $-$2.6 & 0.4 & +1.5 \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{ラップは走行距離が周長（赤258.3\,m）の整数倍に達した時刻で区切るため，Table~\ref{tab:validity_decomp}の内訳とは0.3\,s程度異なる．実車B1の3周目は周長の97.5\,\%までの部分周．完走は，実車では介入なしで走行した周回数．}
+  \tblnote{赤コースの各周には信号停止が1回あり，$\Delta T_{\mathrm{stop}}$に含まれる．青コースの実車B40bとB60bの$\Delta T_{\mathrm{stop}}$は，信号のない青コースで停止点が短時間発行されたことによる（Table~\ref{tab:decomp_all}の注）．経路・追従の和は$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$である．シミュレーションの完走した試行数は，赤の4.0，5.0，6.0\,m/sで23，26，23，青は各30である．}
 \end{table}
 
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
-  \caption[Breakdown of the lap time in the simulation and the real runs.]{Breakdown of the lap time per lap in the simulation (configurations of R1 and B1, mean over 3 laps and 5 seeds) and in the real runs (seconds).}
-  \label{tab:validity_decomp}
-  \scriptsize
-  \setlength{\tabcolsep}{4pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{5.6cm}rrrrrr}
+  \caption[Differences between the simulation and the real runs by term.]{Differences between the simulation and the real runs (simulation minus real; the real value is the mean of the two runs for the blue course) of the second lap by term (seconds). The terms sum to the difference of $T_{\mathrm{lap}}$.}
+  \label{tab:sim_diff}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{lrrrrrrrrr}
     \toprule
-    走行 & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{cap}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{path}}$ & $\Delta T_{\mathrm{track}}$ & $\Delta T_{\mathrm{stop}}$ \\
+    条件 & $T_{\mathrm{lap}}$ & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{cap}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{branch}}$ & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\$-\Delta T_{\mathrm{branch}}$} & $\Delta T_{\mathrm{track}}$ & $\Delta T_{\mathrm{stop}}$ & \shortstack[r]{経路・\\追従の和} \\
     \midrule
-    R1相当（Pure Pursuit法，距離誤差あり） & 43.1 & $+21.3$ & $+0.1$ & $-0.1$ & $+1.4$ & $+6.6$ \\
-    実車R1 & 43.5 & $+21.6$ & $+0.0$ & $-0.1$ & $+0.6$ & $+7.4$ \\
-    B1相当 & 42.9 & $+14.1$ & $+0.2$ & $+1.8$ & $+1.0$ & $0.0$ \\
-    実車B1 & 43.3 & $+14.2$ & $+0.3$ & $+2.0$ & $+0.3$ & $0.0$ \\
+    赤\,4.0 & $-$1.44 & $-$0.37 & $-$0.19 & 0.00 & 0.00 & $-$0.03 & +0.83 & $-$1.69 & +0.80 \\
+    赤\,5.0 & +1.16 & $-$0.47 & $-$0.09 & $-$0.08 & 0.00 & $-$0.73 & +1.29 & +1.25 & +0.56 \\
+    赤\,6.0 & $-$0.66 & $-$0.55 & 0.00 & $-$0.22 & 0.00 & $-$1.19 & +1.83 & $-$0.53 & +0.64 \\
+    \addlinespace[3pt]
+    青\,4.0 & +0.03 & $-$0.72 & $-$0.04 & $-$0.35 & +0.09 & +0.45 & +0.84 & $-$0.24 & +1.29 \\
+    青\,5.0 & +0.29 & $-$0.77 & +0.07 & $-$0.48 & +0.46 & +0.08 & +0.93 & 0.00 & +1.01 \\
+    青\,6.0 & +0.67 & $-$1.15 & 0.00 & $-$0.27 & +0.46 & $-$0.84 & +2.66 & $-$0.19 & +1.82 \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{シミュレーションは3周の平均（1周目は発進を含む），実車は合計を周回数で割った値（Table~\ref{tab:decomp}）．実車は車輪半径0.1265\,m換算．}
+  \tblnote{$\Delta T_{\mathrm{stop}}$の差には，信号が青に変わるまでの時間（入力）と低速接近の差が含まれる．}
 \end{table}
 
-\section{要素ごとの比較}
+\begin{table}[!htbp]
+  \centering
+  \caption[Change of the lap time of the second lap with the upper speed limit.]{Change of the lap time of the second lap with the upper speed limit in the simulation without signal stops (30 trials) and in the real runs (seconds; the blue course is the mean of two runs). For the red course, the real lap time excludes the signal stop time.}
+  \label{tab:sim_change}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{llrrr}
+    \toprule
+    コース & 行 & 4.0$\to$5.0\,m/s & 5.0$\to$6.0\,m/s & 4.0$\to$6.0\,m/s \\
+    \midrule
+    赤 & シミュレーション & $-$13.03 & $-$7.52 & $-$20.56 \\
+     & 実車（信号停止の時間を除く） & $-$12.74 & $-$7.58 & $-$20.32 \\
+     & 差（シミュレーション$-$実車） & $-$0.30 & +0.06 & $-$0.24 \\
+    \addlinespace[3pt]
+    青 & シミュレーション & $-$9.25 & $-$4.79 & $-$14.05 \\
+     & 実車 & $-$9.48 & $-$5.18 & $-$14.65 \\
+     & 差（シミュレーション$-$実車） & +0.22 & +0.38 & +0.60 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{赤コースの実車の$T_{\mathrm{lap}}$（信号停止の時間を含む）の4.0$\to$6.0\,m/sの変化は$-20.35$\,sである．}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/sim_laptime.png}
+  \caption[Lap time of the second lap in the simulation and the real runs.]{Lap time of the second lap in the simulation and the real runs (a: red course with a signal stop in each lap, b: blue course). Circles are the simulation mean, with the range (thin bar) and the standard deviation (thick bar) of the completed trials; squares are the real runs.}
+  \label{fig:sim_laptime}
+\end{figure}
+
+2周目のラップタイムの差は，6条件とも許容幅の内側にあり（$-1.44$〜$+1.16$\,s），信号停止の時間を除いた赤のラップタイムの差も3条件とも許容幅の内側にある（$-0.13$〜$+0.25$\,s）．ただし，この絶対値の一致は，項どうしの打ち消しを含む（Table~\ref{tab:sim_diff}）．青の6.0\,m/sの差$+0.67$\,sは，$T_{\mathrm{phys}}$の$-1.15$\,s（周長が5.8\,m短い），$\Delta T_{\mathrm{plan}}$の$-0.27$\,s，$\Delta T_{\mathrm{branch}}$の$+0.46$\,s，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$の$-0.84$\,s，$\Delta T_{\mathrm{track}}$の$+2.66$\,s，$\Delta T_{\mathrm{stop}}$の$-0.19$\,sの和である．青の4.0\,m/sは，$T_{\mathrm{phys}}$の$-0.72$\,sと経路・追従の和の$+1.29$\,sが打ち消して$+0.03$\,sになる．赤の4.0\,m/sの信号停止を除いたラップタイムの差$+0.25$\,sも，$T_{\mathrm{phys}}$の$-0.37$\,s，$\Delta T_{\mathrm{cap}}$の$-0.19$\,sと，経路・追従の和の$+0.80$\,sの打ち消しである．経路・追従の和は，6条件とも許容幅の外にあり（差$+0.56$〜$+1.82$\,s），シミュレーションの方が大きい．
+
+条件間の変化は一致する．上限速度を4.0から6.0\,m/sに上げたときの2周目のラップタイムの変化は，青でシミュレーション$-14.05$\,s，実車$-14.65$\,s，赤でシミュレーション$-20.56$\,s，実車$-20.35$\,s（信号停止の時間を除くと$-20.32$\,s）である（Table~\ref{tab:sim_change}）．4.0から5.0\,m/s，5.0から6.0\,m/sの変化の差は，青で$+0.22$，$+0.38$\,s，赤（信号停止の時間を除く）で$-0.30$，$+0.06$\,sであり，0.6\,s以内である．最大の差は青の4.0から6.0\,m/sの0.60\,sである．周長が短いことのように条件によらない偏りは，条件間の差では消える．本章の以降の結果は条件間の差で述べ，ラップタイムの変化の大きさを0.6\,sと比べる．項ごとの変化の差の基準は，経路・追従の和の変化の差（Table~\ref{tab:sim_main}，0.5\,s）とする．
+
+設定値と軌跡から計算される項の和（$\Delta T_{\mathrm{cap}}+\Delta T_{\mathrm{plan}}+\Delta T_{\mathrm{branch}}$）の差は，6条件とも$-0.29$〜$+0.19$\,sであり，許容幅の内側にあるのは6条件中2条件である（Table~\ref{tab:sim_verdict}）．個々の項では，$\Delta T_{\mathrm{plan}}$が青の4.0，5.0\,m/sでシミュレーションの方が0.35，0.48\,s小さく，$\Delta T_{\mathrm{branch}}$が青の5.0，6.0\,m/sで0.46\,s大きい．$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$は6条件中3条件で一致する．
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Agreement between the simulation and the real runs by item.}
+  \label{tab:sim_verdict}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{6.4cm}cL{3.0cm}L{2.6cm}}
+    \toprule
+    項目 & \shortstack{一致した\\条件数} & 差の範囲 & 許容幅の範囲 \\
+    \midrule
+    2周目のラップタイム [s] & 6/6 & $-$1.44〜+1.16 & 0.57〜1.51 \\
+    信号停止の時間を除いたラップタイム [s]（赤） & 3/3 & $-$0.13〜+0.25 & 0.73〜0.73 \\
+    $\Delta T_{\mathrm{cap}}$ [s] & 4/6 & $-$0.19〜+0.07 & 0.00〜0.10 \\
+    $\Delta T_{\mathrm{plan}}$ [s] & 2/6 & $-$0.48〜0.00 & 0.03〜0.47 \\
+    $\Delta T_{\mathrm{branch}}$ [s]（青） & 1/3 & +0.09〜+0.46 & 0.09〜0.19 \\
+    $\Delta T_{\mathrm{cap}}+\Delta T_{\mathrm{plan}}+\Delta T_{\mathrm{branch}}$ [s] & 2/6 & $-$0.29〜+0.19 & 0.06〜0.32 \\
+    $\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$ [s] & 3/6 & $-$1.19〜+0.45 & 0.32〜1.60 \\
+    $\Delta T_{\mathrm{track}}$ [s] & 0/6 & +0.83〜+2.66 & 0.08〜0.58 \\
+    $\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$ [s] & 0/6 & +0.56〜+1.82 & 0.49〜1.02 \\
+    $T_{\mathrm{phys}}$ [s] & 0/6 & $-$1.15〜$-$0.37 & 0.15〜0.43 \\
+    周長 [m] & 0/6 & $-$5.84〜$-$2.20 & 0.70〜1.90 \\
+    最大$a_y$ [m/s$^2$] & 3/6 & $-$0.63〜+0.18 & 0.20〜0.40 \\
+    $a_y$が2.0\,m/s$^2$を超える時間 [s/周] & 3/6 & $-$6.38〜0.00 & 0.25〜4.05 \\
+    $a_y$が2.0\,m/s$^2$を超える回数 [回/周] & 1/6 & $-$6.60〜0.00 & 1.00〜3.00 \\
+    青の分岐カーブの最大$a_y$ [m/s$^2$] & 3/3 & +0.10〜+0.48 & 0.22〜0.72 \\
+    青の分岐カーブの最低速度 [m/s] & 3/3 & $-$0.50〜$-$0.22 & 0.32〜0.56 \\
+    青の交差点カーブの最大$a_y$ [m/s$^2$] & 2/3 & $-$0.56〜+0.10 & 0.15〜0.87 \\
+    青の交差点カーブの最低速度 [m/s] & 3/3 & $-$0.36〜$-$0.09 & 0.32〜0.96 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{差の範囲は，シミュレーションの平均から実車の平均を引いた値の，条件ごとの最小と最大である．条件数は，赤3条件と青3条件の計6条件のうち，差が許容幅の内側にあった数である．信号停止の時間を除いたラップタイムは赤3条件，$\Delta T_{\mathrm{branch}}$と青のカーブは青3条件である．許容幅は，実車の同条件2本の差と，2周目以降の周ごとの幅の大きい方である（赤はR60の幅）．赤の$\Delta T_{\mathrm{cap}}$の許容幅は0.1\,s以下と小さく，周長の違いだけで一致しなくなる．}
+\end{table}
+
+青のカーブ（Table~\ref{tab:sim_curve}）では，分岐カーブと交差点カーブの最大$a_y$と最低速度は，12項目中11項目が許容幅の内側にある．外れた1項目は，4.0\,m/sの交差点カーブの最大$a_y$（シミュレーション1.77，実車1.97\,m/s$^2$）である．分岐カーブでは，シミュレーションの方が最大$a_y$が0.10〜0.48\,m/s$^2$大きく，最低速度が0.22〜0.50\,m/s小さい．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Speed and lateral acceleration in the curves of the blue course in the simulation and the real runs.]{Maximum lateral acceleration and minimum speed in the branch and intersection curves of the blue course in the second lap (simulation: mean$\pm$SD of 30 trials; real: mean of two runs).}
+  \label{tab:sim_curve}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{L{4.6cm}rrrrrr}
+    \toprule
+    & \multicolumn{2}{c}{4.0\,m/s} & \multicolumn{2}{c}{5.0\,m/s} & \multicolumn{2}{c}{6.0\,m/s} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+    項目 & シミュレーション & 実車 & シミュレーション & 実車 & シミュレーション & 実車 \\
+    \midrule
+    分岐カーブ：最大$a_y$ [m/s$^2$] & 2.25$\pm$ 0.09 & 2.15 & 2.67$\pm$ 0.23 & 2.19 & 2.67$\pm$ 0.25 & 2.40 \\
+    分岐カーブ：最低速度 [m/s] & 2.28$\pm$ 0.11 & 2.50 & 2.11$\pm$ 0.10 & 2.61 & 2.12$\pm$ 0.14 & 2.38 \\
+    交差点カーブ：最大$a_y$ [m/s$^2$] & 1.77$\pm$ 0.09 & 1.97 & 1.99$\pm$ 0.12 & 1.89 & 2.05$\pm$ 0.17 & 2.60 \\
+    交差点カーブ：最低速度 [m/s] & 2.45$\pm$ 0.09 & 2.54 & 2.38$\pm$ 0.12 & 2.49 & 2.32$\pm$ 0.11 & 2.68 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{$a_y$は$vr$の0.5\,s移動平均である．区間は，実車の位置合わせに用いた周の軌跡で分岐が$s=131$〜149\,m，交差点が$s=182$〜201\,m（幅18〜19\,m）であり，シミュレーションは位置が15\,m小さい対応する区間である．4章のTable~\ref{tab:branch}の区間（幅5〜6\,m，3周の平均）とは異なるため，実車の値も4章の値とは一致しない．}
+\end{table}
+
+速度の追従による時間差$\Delta T_{\mathrm{track}}$は，6条件とも一致しない．実車は5.0，6.0\,m/sで負（赤$-0.67$，$-1.69$\,s，青$-0.36$，$-2.33$\,s（2本の平均））であり，減速しきれずにカーブへ入ることに当たる（\ref{sec:decomp_result}節）．シミュレーションは正（赤$+0.62$，$+0.15$\,s，青$+0.56$，$+0.33$\,s）である．これに対応して，横加速度が2.0\,m/s$^2$を超える時間は，6.0\,m/sでシミュレーションが赤2.57\,s，青2.94\,s（1周あたり）で，実車（8.95，8.48\,s）の約1/3であり，青6.0\,m/sの最大$a_y$もシミュレーションが小さい（2.70，実車3.15\,m/s$^2$）．シミュレーションのコースの周長は，実車の2周目の周長（赤260.8〜261.9\,m，青258.1〜262.2\,m）より2.2〜5.8\,m短く，$T_{\mathrm{phys}}$が0.4〜1.2\,s小さい．
+
+$\Delta T_{\mathrm{track}}$の符号が逆になる原因を，青コース6.0\,m/sのカーブ進入の減速（計画速度が1\,s以内に1.5\,m/s以上下がる事象．実車35件，シミュレーション202件）で切り分けた（Fig.~\ref{fig:sim_track_sign}）．実車の記録した計画（参照速度と参照加速度）を入力にして，縦方向のPID制御（実装と同じ論理）と車両モデルだけを回すと，減速中に車輪速が参照速度を上回る量（正の部分の平均）は0.44\,m/sで，実車の0.42\,m/sと一致し，実車の車輪速との二乗平均平方根誤差は0.11\,m/sである．並進速度のモデルを走行試験Bの値（時定数0.30\,s，ゲイン0.99，むだ時間0）にしても0.45\,m/s（誤差0.12\,m/s）であり，減速の上限や制動時の時定数を変えても変わらない．車両モデルと縦方向のPID制御は，実車の計画を与えれば，減速しきれずにカーブへ入る現象を再現する．違いは，閉ループに入力される計画にある．カーブ内の最小の計画速度は，実車が平均3.51\,m/s（標準偏差0.87\,m/s），シミュレーションが3.90\,m/s（0.35\,m/s）であり，実車の参照速度は減速の前に4.2〜6.0\,m/sの間で階段状に変動するのに対し，シミュレーションの参照速度は滑らかである．減速中に車輪速が参照速度を上回る量は，実車0.42\,m/s，シミュレーション0.17\,m/sである．減速開始の速度（5.87，5.96\,m/s）と，曲率が最大になるまでの時間（2.42，2.61\,s）は近い．シミュレーションの経路生成のモデルはR1とB1の揺らぎで構成しており，上限速度6.0\,m/sの実車の経路生成の出力に比べて，速度計画に入力される経路の曲率の変動が小さい．そのため参照速度の変動が小さく，減速しきれずにカーブへ入る現象が実車より小さい．ここで，シミュレーションの計画の曲率には記録がなく，この比較は最小の計画速度と参照速度の波形による．4章では，経路生成の揺らぎが上限速度とともに増えること（先端以外の行のラプラス尺度は，赤で0.048から0.067\,m，青で0.060から0.075\,m）を示した．\ref{sec:sil_sens}節の「揺らぎの大きさ1.5倍」の条件は，この点を調べる条件であり，揺らぎを1.5倍にすると青の$\Delta T_{\mathrm{track}}$は$+0.29$\,sから$-0.35$\,s（10試行すべてが負）に変わるが，実車（$-2.04$，$-2.62$\,s）の1/6〜1/8であり，横加速度が2.0\,m/s$^2$を超える時間は3.3\,s/周のままである（実車6.7〜10.3\,s/周）．揺らぎの大きさだけでは，実車の速度の追従は再現しない．
+
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{images/sim_track_sign.png}
+  \caption[Speed at curve entries of the blue course at 6.0 m/s in the real runs and the simulation.]{Speed at the deceleration before the curves of the blue course at the upper speed limit of 6.0\,m/s. (a) One real entry: the planned speed given to the controller, the real wheel speed, and the speed of the vehicle model driven by the real plan (the simulation model and the driving test B values). (b) Mean of the planned speed (dashed) and the wheel speed (solid) over the entries aligned at the start of the deceleration (real: 35 entries; simulation: 202 entries; bands: 10--90\,\% of the wheel speed).}
+  \label{fig:sim_track_sign}
+\end{figure}
+
+信号停止（Table~\ref{tab:sim_stop}，Fig.~\ref{fig:sim_stop}）では，信号が青に変わるまでの時間が入力であるため，静止の時間は比較の対象から外し，減速，低速接近，再発進を比べる．上限速度6.0\,m/sの減速（4.3\,s）は近く，再発進も実車2.5\,s，シミュレーション2.9\,sと近い．一方，低速接近は再現しない．上限速度4.0\,m/sの低速接近は，実車R40の3.1\,s（2.5〜3.8\,s）に対し，シミュレーションは0.3\,s（0.1〜2.2\,s）である．5.0，6.0\,m/sも，実車の0.9\,s，0.9\,s（6.0\,m/sの範囲は0.3〜1.4\,s）に対し，シミュレーションは0.3\,s，0.3\,sである．車輪速の0読みを設けない条件では，低速接近が9.1\,sになる．上限速度5.0\,m/sでは，停止点の初回発行距離$d_0$がシミュレーションで6.8\,m，実車R50で4.5\,mと異なり，減速も実車が3.1\,s，シミュレーションが4.5\,sである．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Phases of the signal stop in the simulation and the real runs.]{Phases of the signal stop on the red course (mean$\pm$SD over the stops, in seconds) and the distance $d_0$ to the stop point at its first issue (in meters). The standing phase, which is set by the input signal time, is excluded.}
+  \label{tab:sim_stop}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{rL{4.4cm}rrrrrr}
+    \toprule
+    \shortstack[r]{$v_{\mathrm{cap}}$\\{[m/s]}} & 行 & 減速 & 低速接近 & 再発進 & \shortstack[r]{$\Delta T_{\mathrm{stop}}$\\$-$静止} & $d_0$ & 停止数 \\
+    \midrule
+    4.0 & 実車R40 & 4.5$\pm$ 0.1 & 3.1$\pm$ 0.6 & 2.3$\pm$ 1.3 & 4.9$\pm$ 0.6 & 6.7$\pm$ 0.1 & 3 \\
+    4.0 & シミュレーション & 4.7$\pm$ 0.1 & 0.3$\pm$ 0.2 & 2.0$\pm$ 0.8 & 2.4$\pm$ 0.5 & 6.8$\pm$ 0.0 & 89 \\
+    4.0 & 車輪速の0読みなし（シミュレーション） & 4.7$\pm$ 0.1 & 9.1$\pm$ 1.7 & 1.9$\pm$ 0.7 & 11.0$\pm$ 1.6 & 6.8$\pm$ 0.0 & 85 \\
+    \addlinespace[3pt]
+    5.0 & 実車R50 & 3.1$\pm$ 0.6 & 0.9$\pm$ 0.1 & 1.9$\pm$ 0.0 & 3.3$\pm$ 0.2 & 4.5$\pm$ 0.2 & 3 \\
+    5.0 & シミュレーション & 4.5$\pm$ 0.1 & 0.3$\pm$ 0.3 & 2.4$\pm$ 0.8 & 3.3$\pm$ 0.6 & 6.8$\pm$ 0.0 & 88 \\
+    \addlinespace[3pt]
+    6.0 & 実車R60 & 4.3$\pm$ 0.4 & 0.9$\pm$ 0.6 & 2.5$\pm$ 0.1 & 4.2$\pm$ 0.7 & 6.3$\pm$ 0.9 & 3 \\
+    6.0 & シミュレーション & 4.3$\pm$ 0.1 & 0.3$\pm$ 0.3 & 2.9$\pm$ 1.2 & 3.8$\pm$ 0.9 & 6.8$\pm$ 0.1 & 89 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{局面の定義は\ref{sec:decomposition}節のとおりである．実車は各上限速度で3周の停止3回，シミュレーションは完走した試行の停止（車輪速の読みが0に達した停止）である．}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{images/sim_stop_wave.png}
+  \caption[Wheel speed at the signal stop in the simulation and the real runs.]{Wheel speed at the signal stop in the simulation (thin blue lines, one for each stop of the trials in which the wheel speed reading reached zero) and in the real runs (red lines, three stops each), for the upper speed limits of 4.0, 5.0, and 6.0\,m/s. The origin of the time is the first issue of the stop point.}
+  \label{fig:sim_stop}
+\end{figure}
+
+信号停止を含む走行の完走は，赤コースの90試行のうち72（上限速度4.0，5.0，6.0\,m/sで23，26，23）であり，Wilsonの95\,\%信頼区間は0.71〜0.87である．実車の信号停止は9回中9回が成功し，区間は0.70〜1.00で，シミュレーションの区間と重なり，区別できない．完走しなかった18試行のうち17試行は静止後の再発進中，1試行は停止進入中に，横偏差が経路の右側へ1.5\,mに達した．再発進中に超えた17試行は，静止の時点で，すでに車線中心から右へ0.8〜1.4\,m寄っている．その位置は走行距離で131.6〜135.5\,m（停止線132.7\,m，コーン136\,m），速度は1.8〜3.4\,m/sである．
+
+低速接近の差の原因を，実車の記録から切り分けた．実車R40の計画速度と加速度（制御器への入力）を開ループで与え，縦方向のPID制御（実装と同じ論理）と車両モデルだけを回すと，低速接近は，実車R40の1，2周目の停止（2.5，3.0\,s）に対して2.25，2.15\,sになり，実車に近い．車両モデルと制御器は低速接近の短さの原因ではない．閉ループでは，計画速度が0になる時刻の車輪速が実車で0.38\,m/s，シミュレーションで0.22\,m/sと異なり，シミュレーションは実車より低い速度で停止点の手前に入る．カーブ進入の減速と信号停止の低速接近は同じ構図であり，制御器と車両モデルは実車の計画を与えれば現象を再現し，違いは閉ループに入力される計画にある．
+
+以上から，本シミュレーションは，上限速度を変えたときのラップタイムの変化，および設定値と軌跡から計算される項の和（差は$-0.29$〜$+0.19$\,s）について，実車に近い値を与える．ラップタイムの絶対値は，周長が短い分と$\Delta T_{\mathrm{track}}$が大きい分の打ち消しを含み，速度の追従の細部（減速しきれずにカーブへ入る現象）と信号停止の低速接近は再現しない．そこで\ref{sec:sil_effect}節以降では，信号停止を含まない周回のラップタイムの変化に限ってシミュレーションを用い，項ごとの動きは，実車と一致しなかった項を除いて参照する．完走数は，このシミュレーションの条件の中での条件間の比較として述べる．
+
+\section{設定値の効果}
+\label{sec:sil_effect}
+本節は，設定値を変えたときのラップタイムの変化を，閉ループシミュレーションで求める．条件は，標準構成から設定値を1つだけ変えたものとし，信号停止を含まない2周を各条件30試行走行させ，2周目のラップタイムを用いる．Fig.~\ref{fig:sim_settings}に，標準構成，横加速度の上限を変えた条件，分岐での速度抑制を外した条件のラップタイムを示す．$\Delta T_{\mathrm{plan}}$の変化は，3章の内訳と同じ速度計画の式（\eqnref{eq:vcurve}，\eqnref{eq:forward}，\eqnref{eq:backward}）を軌跡に当てた計算であり，実車の走行の軌跡で計算し直した値（以下，見積もり）とシミュレーションの値は，同じ計算であるため近く，検証としては扱わない．示すのは，閉ループで，ラップタイムがどれだけ変わるか，他の項（$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$，$\Delta T_{\mathrm{branch}}$，$\Delta T_{\mathrm{track}}$）がどう動くかである．ラップタイムの変化の大きさは，\ref{sec:sil_validity}節の条件間の変化の差（0.6\,s）と比べ，項ごとの変化の差の基準は0.5\,sとする．
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/sim_settings.png}
+  \caption[Lap time of the second lap with the settings changed.]{Lap time of the second lap in the simulation without signal stops for the standard setting ($a_{y,\max}=2.0$\,m/s$^2$), $a_{y,\max}=3.0$\,m/s$^2$, and the removal of the branch speed limit (blue course, 5.0 and 6.0\,m/s), with the range of the trials (bar). Crosses are the real runs with the signal stop time removed.}
+  \label{fig:sim_settings}
+\end{figure}
+
+\subsection{横加速度の上限}
+\label{sec:sil_ay}
+標準構成の横加速度の上限$a_{y,\max}$（2.0\,m/s$^2$）を3.0\,m/s$^2$に上げた条件を，標準構成と比べる．見積もりは，実車の走行の軌跡の上で$a_{y,\max}$を3.0\,m/s$^2$としたときの$\Delta T_{\mathrm{plan}}$の変化である（青は2本の平均）．結果をTable~\ref{tab:sim_ay}に示す．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Lap time with $a_{y,\max}$ of 3.0 and 2.0 m/s$^2$ and the change by term.]{Lap time of the second lap with $a_{y,\max}$ of 2.0 and 3.0\,m/s$^2$ in the simulation without signal stops (mean$\pm$SD of 30 trials), and the change (3.0 minus 2.0) of $T_{\mathrm{lap}}$ and of each term (seconds). The last column is the change of $\Delta T_{\mathrm{plan}}$ calculated on the real driven paths.}
+  \label{tab:sim_ay}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{lrrrrrrrr}
+    \toprule
+    条件 & \shortstack[r]{$T_{\mathrm{lap}}$\\2.0} & \shortstack[r]{$T_{\mathrm{lap}}$\\3.0} & \shortstack[r]{$T_{\mathrm{lap}}$\\の変化} & \shortstack[r]{$\Delta T_{\mathrm{plan}}$\\の変化} & \shortstack[r]{$\Delta T_{\mathrm{branch}}$\\の変化} & \shortstack[r]{$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$\\の変化} & \shortstack[r]{$\Delta T_{\mathrm{track}}$\\の変化} & \shortstack[r]{見積もり\\（実車）} \\
+    \midrule
+    赤\,4.0 & 65.96$\pm$ 0.02 & 65.96$\pm$ 0.01 & 0.00 & 0.00 & 0.00 & $-$0.04 & +0.04 & 0.00 \\
+    赤\,5.0 & 52.93$\pm$ 0.11 & 52.77$\pm$ 0.01 & $-$0.15 & $-$0.06 & 0.00 & $-$0.36 & +0.26 & $-$0.14 \\
+    赤\,6.0 & 45.40$\pm$ 0.17 & 44.12$\pm$ 0.10 & $-$1.28 & $-$0.70 & 0.00 & $-$0.86 & +0.27 & $-$1.00 \\
+    \addlinespace[3pt]
+    青\,4.0 & 66.21$\pm$ 0.14 & 65.20$\pm$ 0.03 & $-$1.01 & $-$0.19 & 0.00 & $-$1.08 & +0.27 & $-$0.52 \\
+    青\,5.0 & 56.96$\pm$ 0.21 & 55.45$\pm$ 0.07 & $-$1.51 & $-$0.96 & +0.61 & $-$1.32 & +0.18 & $-$1.20 \\
+    青\,6.0 & 52.17$\pm$ 0.24 & 49.41$\pm$ 0.13 & $-$2.75 & $-$2.46 & +1.27 & $-$1.78 & +0.19 & $-$2.51 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{列の2.0，3.0は$a_{y,\max}$の値である．$T_{\mathrm{phys}}$と$\Delta T_{\mathrm{cap}}$の変化は0.04\,s以下であり，表の項の変化の和は$T_{\mathrm{lap}}$の変化にほぼ等しい．}
+\end{table}
+
+青の6.0\,m/sでは，$a_{y,\max}$を3.0\,m/s$^2$にすると，ラップタイムが52.17\,sから49.41\,sへ2.75\,s短くなる．この差は，試行間の標準偏差（0.24，0.13\,s）の10倍以上であり，実車の同条件2本の差（1.51\,s）の1.8倍である．内訳では，$\Delta T_{\mathrm{plan}}$が2.46\,s減り，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$が1.78\,s減る一方，$\Delta T_{\mathrm{branch}}$が1.27\,s，$\Delta T_{\mathrm{track}}$が0.19\,s増える．$\Delta T_{\mathrm{plan}}$以外の項の正味の変化は，赤の5.0，6.0\,m/sで$-0.09$，$-0.58$\,s，青の4.0，5.0，6.0\,m/sで$-0.82$，$-0.55$，$-0.29$\,sである．これらの項は1〜2\,s規模で動き，互いに打ち消し合う．
+
+見積もりとラップタイムの短縮は，赤の4.0，5.0，6.0\,m/sで0.00と0.00，0.14と0.15，1.00と1.28\,s，青で0.52と1.01，1.20と1.51，2.51と2.75\,sである．ラップタイムの短縮は見積もりより大きく，その差は0.00〜0.49\,sである．最大の差は青の4.0\,m/sで，短縮は見積もりの約2倍である．この条件では，$\Delta T_{\mathrm{path}}$が1.13\,sから0.05\,sに減る．$a_{y,\max}$を上げると，経路の曲率の誤差によって速度が下がる区間が減るためである．赤の4.0\,m/sは，$a_{y,\max}$によらず上限速度4.0\,m/sで走るため，変化は0.00\,sである．
+
+同定に用いた走行の再現として，$a_{y,\max}$が3.0\,m/s$^2$の実車B1（青，4.5\,m/s）と同じ構成のシミュレーションを30試行走行させ，B1の2周目と比べた（Table~\ref{tab:sim_b1}）．B1は，経路生成のモデルの同定に用いた走行であり，この比較は，$a_{y,\max}$を変えたときの短縮の検証にはならない．B1の制御器は，入力遅延の補償と曲率の平滑化を持たないMPCであり，シミュレーションも同じ構成とする．舵角の制限の横加速度は，制限なしと3.5\,m/s$^2$の2水準とする．2周目のラップタイムは，制限なしで59.69$\pm$0.06\,s，3.5\,m/s$^2$で59.70$\pm$0.08\,sであり，実車B1の59.75\,sとの差は0.06，0.05\,sである．30試行すべてが完走した．$a_{y,\max}$が3.0\,m/s$^2$の構成でも，シミュレーションはB1のラップタイムを再現する．一方，内訳の項は一致しない．$\Delta T_{\mathrm{branch}}$はシミュレーションが$+1.60$\,s，実車が$+1.05$\,s，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$が$+0.39$\,sと$+1.16$\,s，$\Delta T_{\mathrm{track}}$が$+0.79$\,sと$+0.01$\,sであり，ラップタイムの一致は，これらの項の打ち消しを含む．舵角の制限の2水準の差はラップタイムで0.01\,sである．
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Lap time of the second lap in the configuration of B1 (blue course, upper speed limit of 4.5\,m/s, $a_{y,\max}=3.0$\,m/s$^2$).}
+  \label{tab:sim_b1}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{6.2cm}rrrrr}
+    \toprule
+    行 & $T_{\mathrm{lap}}$ [s] & 完走 & $\Delta T_{\mathrm{branch}}$ & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\$-\Delta T_{\mathrm{branch}}$} & $\Delta T_{\mathrm{track}}$ \\
+    \midrule
+    実車B1 & 59.75 & --- & +1.05 & +1.16 & +0.01 \\
+    シミュレーション（舵角の制限なし） & 59.69$\pm$ 0.06 & 30/30 & +1.60 & +0.39 & +0.79 \\
+    シミュレーション（舵角の制限の横加速度3.5\,m/s$^2$） & 59.70$\pm$ 0.08 & 30/30 & +1.61 & +0.39 & +0.80 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{シミュレーションは30試行の平均$\pm$標準偏差である．実車B1の$\Delta T_{\mathrm{branch}}$は，記録した計画速度が4.0\,m/sに張り付いた区間の値である．}
+\end{table}
+
+シミュレーションの副作用の値をTable~\ref{tab:sim_ay_side}に示す．最大$a_y$は，青の6.0\,m/sで2.79から3.07\,m/s$^2$に増え（全試行の最大3.29），横加速度が2.0\,m/s$^2$を超える時間は，青の6.0\,m/sで2.9\,sから8.8\,s（1周あたり）に増える．ただし，シミュレーションは横加速度の超過を実車の約1/3にしか再現しない（\ref{sec:sil_validity}節）．実車は$a_{y,\max}=2.0$\,m/s$^2$でも，横加速度が最大3.35\,m/s$^2$に達し，この値は舵角の制限の横加速度$a_{\mathrm{lim}}=3.0$\,m/s$^2$の約1.1倍である（\ref{sec:ay_result}節）．$a_{y,\max}$を3.0\,m/s$^2$にすると，計画の上限が舵角の制限と等しくなり，超過は横偏差として現れる．横偏差と横加速度の超過の大きさはシミュレーションが再現しないため，副作用は見積もらず，本節の結果はラップタイムの短縮の大きさに限る．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Lateral acceleration in the simulation with $a_{y,\max}$ of 2.0 and 3.0 m/s$^2$.]{Maximum lateral acceleration (0.5\,s mean; mean and maximum of the trials) and time with lateral acceleration above 2.0\,m/s$^2$ per lap, for $a_{y,\max}$ of 2.0 and 3.0\,m/s$^2$ (simulation without signal stops).}
+  \label{tab:sim_ay_side}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{lrrrr}
+    \toprule
+    & \multicolumn{2}{c}{最大$a_y$ [m/s$^2$]} & \multicolumn{2}{c}{$a_y>2.0$の時間 [s/周]} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+    条件 & 2.0 & 3.0 & 2.0 & 3.0 \\
+    \midrule
+    赤\,4.0 & 1.44 (1.54) & 1.43 (1.58) & 0.0 & 0.0 \\
+    赤\,5.0 & 2.18 (2.35) & 2.26 (2.50) & 0.7 & 1.5 \\
+    赤\,6.0 & 2.65 (2.88) & 2.90 (2.98) & 1.9 & 5.1 \\
+    \addlinespace[3pt]
+    青\,4.0 & 2.29 (2.57) & 2.46 (2.54) & 0.5 & 2.6 \\
+    青\,5.0 & 2.81 (3.06) & 2.86 (3.08) & 1.2 & 3.5 \\
+    青\,6.0 & 2.79 (3.14) & 3.07 (3.29) & 2.9 & 8.8 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{列の2.0，3.0は$a_{y,\max}$の値である．最大$a_y$は2周の解析範囲全体，時間は2周目の値である．}
+\end{table}
+
+\subsection{分岐での速度抑制}
+\label{sec:sil_branch}
+青コースの分岐での速度抑制（4.0\,m/s）を外した条件を，標準構成と比べる．上限速度は5.0，6.0\,m/sである（4.0\,m/sでは抑制値が上限速度と等しい）．結果をTable~\ref{tab:sim_branch}に示す．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Lap time without the branch speed limit.]{Lap time of the second lap on the blue course without the branch speed limit and with it (standard setting) in the simulation without signal stops, and the change of each term (seconds). Curve values are the mean (maximum) of the trials in the branch curve for the maximum lateral acceleration, and the mean for the minimum speed.}
+  \label{tab:sim_branch}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{L{5.6cm}rrrr}
+    \toprule
+    & \multicolumn{2}{c}{5.0\,m/s} & \multicolumn{2}{c}{6.0\,m/s} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+    項目 & 抑制あり & 抑制なし & 抑制あり & 抑制なし \\
+    \midrule
+    2周目のラップタイム [s] & 56.96$\pm$ 0.21 & 54.82$\pm$ 0.26 & 52.17$\pm$ 0.24 & 49.06$\pm$ 0.38 \\
+    $T_{\mathrm{lap}}$の変化 [s] &  & $-$2.14 &  & $-$3.10 \\
+    $\Delta T_{\mathrm{plan}}$の変化 [s] &  & +0.01 &  & 0.00 \\
+    $\Delta T_{\mathrm{branch}}$の変化 [s] &  & $-$2.39 &  & $-$3.42 \\
+    $\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$の変化 [s] &  & +0.16 &  & +0.38 \\
+    $\Delta T_{\mathrm{track}}$の変化 [s] &  & +0.07 &  & $-$0.06 \\
+    実車の見積もり（$-\Delta T_{\mathrm{branch}}$）[s] &  & $-$1.94 &  & $-$2.99 \\
+    シミュレーションの$\Delta T_{\mathrm{branch}}$ [s] & 2.41 & 0.03 & 3.44 & 0.03 \\
+    分岐カーブの最大$a_y$ [m/s$^2$] & 2.70 (3.06) & 2.77 (3.08) & 2.53 (3.14) & 2.80 (3.23) \\
+    分岐カーブの最低速度 [m/s] & 2.12 & 2.29 & 2.09 & 2.32 \\
+    完走 & 30/30 & 29/30 & 30/30 & 30/30 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{実車の$\Delta T_{\mathrm{branch}}$は，B50a，B50bとB60a，B60bの2本の平均である．最大$a_y$，最低速度は分岐カーブの値（\ref{sec:sil_validity}節の区間，$a_y$は2周）である．}
+\end{table}
+
+分岐での速度抑制を外すと，ラップタイムは5.0\,m/sで2.14\,s，6.0\,m/sで3.10\,s短くなる．この差は，試行間の標準偏差（0.21〜0.38\,s）の5倍以上であり，実車の同条件2本の差（0.31，1.51\,s）の6.9倍，2.1倍である．内訳では，$\Delta T_{\mathrm{branch}}$が2.39，3.42\,s減り，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$が0.16，0.38\,s，$\Delta T_{\mathrm{track}}$が0.07\,s，$-0.06$\,s変わる．標準構成の$\Delta T_{\mathrm{branch}}$（2.41，3.44\,s）は，ラップタイムの短縮より0.27，0.34\,s（約1割）大きい．実車の$\Delta T_{\mathrm{branch}}$（1.94，2.99\,s）は，シミュレーションの短縮より0.20，0.11\,s小さい．
+
+シミュレーションの経路生成のモデルは，指示と同時に分岐側の車線中心を出力する．抑制を外した結果は，この入力の条件での効果である．分岐カーブの最大$a_y$は5.0\,m/sで2.70から2.77，6.0\,m/sで2.53から2.80\,m/s$^2$に増え，最低速度は2.12から2.29，2.09から2.32\,m/sに上がる．完走は，5.0\,m/sで30試行中29（標準構成は30）であり，1試行は周の終端付近で操舵が飽和し，最大横偏差が2.6\,mに達した．6.0\,m/sは30試行すべてが完走した．完走数の95\,\%信頼区間（29/30で0.83〜0.99，30/30で0.89〜1.00）は重なり，完走数の差は述べない．$a_{y,\max}$を上げると$\Delta T_{\mathrm{branch}}$が1.27\,s増える（Table~\ref{tab:sim_ay}）ため，$a_{y,\max}$を3.0\,m/s$^2$にした短縮（2.75\,s）と抑制を外した短縮（3.10\,s）は，足し合わせられない．
+
+\subsection{上限速度を上げたときの時間差の増加}
+\label{sec:sil_main}
+4章では，上限速度を4.0から6.0\,m/sに上げたときの短縮が$\Delta T_{\mathrm{cap}}$の減少より小さくなる量の大部分は，速度計画の設定値を変えると変わる分であると示した．この結果をシミュレーションで再現できるかを，標準構成の信号停止を含まない2周で調べた（Table~\ref{tab:sim_main}）．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Change of the breakdown from 4.0 to 6.0 m/s in the simulation and the real runs.]{Change of the breakdown of the second lap when the upper speed limit is raised from 4.0 to 6.0\,m/s in the simulation without signal stops (30 trials) and in the real runs (seconds; the blue course is the mean of two runs). The real runs on the red course include the signal stops.}
+  \label{tab:sim_main}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{6.2cm}rrrr}
+    \toprule
+    & \multicolumn{2}{c}{赤} & \multicolumn{2}{c}{青} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+    項 & シミュレーション & 実車 & シミュレーション & 実車 \\
+    \midrule
+    $T_{\mathrm{lap}}$ & $-$20.56 & $-$20.35 & $-$14.05 & $-$14.65 \\
+    $\Delta T_{\mathrm{cap}}$ & $-$21.55 & $-$21.74 & $-$21.23 & $-$21.27 \\
+    $\Delta T_{\mathrm{plan}}$ & +0.71 & +1.00 & +3.10 & +3.02 \\
+    $\Delta T_{\mathrm{branch}}$ & 0.00 & 0.00 & +3.44 & +3.08 \\
+    $T_{\mathrm{phys}}$ & $-$0.01 & +0.18 & 0.00 & +0.43 \\
+    $\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$ & +0.28 & +0.23 & +0.65 & +0.14 \\
+    $\Delta T_{\mathrm{stop}}$ & 0.00 & $-$0.03 & 0.00 & $-$0.05 \\
+    \addlinespace[3pt]
+    $\Delta T_{\mathrm{plan}}+\Delta T_{\mathrm{branch}}$ & +0.71 & +1.00 & +6.54 & +6.10 \\
+    短縮が$\Delta T_{\mathrm{cap}}$の減少より小さい量 & +0.99 & +1.39 & +7.19 & +6.62 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{シミュレーションの変化の標準誤差は，$T_{\mathrm{lap}}$で0.03（赤），0.05\,s（青），$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$で0.03，0.05\,sである．}
+\end{table}
+
+青では，$\Delta T_{\mathrm{plan}}+\Delta T_{\mathrm{branch}}$の増加がシミュレーションで$+6.54$\,s，実車で$+6.10$\,sであり，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$の増加は$+0.65$\,sと$+0.14$\,sである．赤では，$\Delta T_{\mathrm{plan}}+\Delta T_{\mathrm{branch}}$が$+0.71$\,sと$+1.00$\,s，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$が$+0.28$\,sと$+0.23$\,sである．上限速度を上げたときの短縮が$\Delta T_{\mathrm{cap}}$の減少より小さくなる量は，青でシミュレーション7.19\,s（実車6.62\,s）であり，$\Delta T_{\mathrm{plan}}+\Delta T_{\mathrm{branch}}$の増加（6.54\,s）がその91\,\%を占める．$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$の増加は，シミュレーションの方が青で0.51\,s大きく，これはシミュレーションの$\Delta T_{\mathrm{track}}$が正で，実車が負であること（\ref{sec:sil_validity}節）による．信号停止を含む赤のシミュレーションでは，短縮が$\Delta T_{\mathrm{cap}}$の減少より小さくなる量が1.98\,s（実車1.39\,s）で，$\Delta T_{\mathrm{stop}}$が$+1.13$\,s変わる．
+
+\section{要素の置換}
 \label{sec:ablation}
-Table~\ref{tab:conditions}に比較する条件を，Table~\ref{tab:ablation}に各条件のラップタイムと完走の可否を示す．基準は，MPC，速度に比例した合流距離，3次多項式の平滑化，停止専用の減速度，分岐での速度抑制を備えた構成である（Table~\ref{tab:params}）．上限速度の設定値は4.0，5.5，7.0\,m/sとした（0.5\,m/s刻みの掃引は\ref{sec:sweep}項に示す）．走行は各コース2周で，ラップタイムには2周目を用いる．完走の判定は\ref{sec:sil_run}項のとおりである．以下，試験で到達を確認した最高速度6.0\,m/s（Table~\ref{tab:phys}）を超える上限速度の結果を参考値と呼ぶ．この表の走行は信号停止を含まない．信号停止は\ref{sec:stop_result}項で別に示す．Fig.~\ref{fig:sil_ablation}に，各条件のラップタイムと完走率を上限速度ごとに示す．
+標準構成の要素を1つずつ置き換えた，または外した条件のラップタイムと完走を，標準構成と比べる．Table~\ref{tab:conditions}に条件を，Table~\ref{tab:ablation}，\ref{tab:ablation_terms}，\ref{tab:ablation_comp}に結果を示す．比較の基準は，\ref{sec:sil_effect}節の標準構成（$a_{y,\max}=2.0$\,m/s$^2$）の試行である．ラップタイムの差の大きさは，\ref{sec:sil_validity}節の条件間の変化の差（0.6\,s）と比べ，項ごとの差の基準は0.5\,sとする．完走の判定は車線中心に対する絶対値であるため，完走数は条件間の比較に用い，実車の完走としては読まない．上限速度は4.0，5.0，6.0\,m/s，走行は信号停止を含まない2周，各条件30試行とし，2周目のラップタイムを用いる．
 
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
   \caption{Conditions of the component-wise comparison.}
   \label{tab:conditions}
-  \scriptsize
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{4.4cm}L{7.0cm}L{3.2cm}}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{3.4cm}L{2.4cm}L{7.4cm}}
     \toprule
-    条件 & 内容 & 適用 \\
+    条件 & 変える要素 & 内容 \\
     \midrule
-    基準 & MPC，速度に比例した合流距離（4〜15\,m），3次の平滑化，停止専用の減速度，分岐での速度抑制 & 赤・青 \\
-    Pure Pursuit法 & MPCをPure Pursuit法に置き換える & 赤・青 \\
-    2次の平滑化 & 3次の平滑化を2次に置き換える & 赤・青 \\
-    合流距離を15\,mに固定 & 速度に比例した合流距離を15\,mに固定する & 赤・青 \\
-    2次の平滑化かつ合流距離15\,m固定（参考） & 上の2つの条件を同時に適用する & 赤・青 \\
-    分岐での速度抑制なし & 分岐での速度抑制を外す & 青のみ（赤には分岐がない） \\
-    理想的な経路生成 & 経路生成の雑音を加えず，車線中心の真値を弧長に沿った点として与える & 赤・青 \\
-    停止専用の減速度なし & 停止専用の減速度（1.5／4.0\,m/s$^2$）を走行時の縦加速度3.0\,m/s$^2$と共通にする & 赤の信号停止のみ（\ref{sec:stop_result}項） \\
-    認識距離の6/9\,m切替 & 前方6\,m以内に$|\kappa|>0.04$\,1/mのカーブがあるフレームで，6\,m以遠の点を消す & 赤・青（5.0〜7.0\,m/s，\ref{sec:noise_result}項） \\
+    標準構成 & --- & MPC，速度に比例した合流距離（4〜15\,m），3次の平滑化，$a_{y,\max}=2.0$\,m/s$^2$，分岐での速度抑制4.0\,m/s \\
+    Pure Pursuit法 & 経路追従制御 & MPCをPure Pursuit法に置き換える．Pure Pursuit法は縦方向のPID制御を使わず，参照点の計画速度をそのまま指令する構成（R1と同じ）であり，横方向と縦方向の2つを同時に変える \\
+    2次の平滑化 & 平滑化 & 3次の平滑化を2次に置き換える．比較のために設けた条件である \\
+    合流距離を15\,mに固定 & 局所経路計画 & 速度に比例した合流距離を15\,mに固定する．比較のために設けた条件である \\
+    2次の平滑化かつ合流距離15\,m固定（併用） & 平滑化と局所経路計画 & 上の2つの条件を同時に適用し，相互作用を見る \\
+    経路生成の揺らぎなし & 経路生成 & 雑音の尺度を0，先端の欠落なしとする．認識距離と平滑化は標準構成のままである \\
+    車線中心の真値（平滑化なし） & 経路生成 & 車線中心の真値を，雑音を加えずに前方20\,mまで0.2\,m間隔の点として与え，平滑化を経由せずに参照経路とする．雑音をなくす，認識距離を9\,mから20\,mにする，平滑化を通さない，点を0.2\,m間隔にするの4つを同時に変える \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{適用は，すべての条件で赤・青の両コースである．}
 \end{table}
 
-各条件は5シードであり，条件間の差は\ref{sec:sil_run}項のとおり扱う．ラップタイムのシード間の標準偏差は最大0.55\,sであり，1.1\,s以内の差はシード間のばらつきと区別できない．Welchの$t$検定は完走のない条件を除く27セルについて行い，Bonferroni補正後の有意水準は$0.05/27\approx 0.0019$である．これを下回ったのは次の4セルである．分岐での速度抑制なし（青）は，5.5\,m/sと7.0\,m/sで基準より短い（$p$はそれぞれ$3.2\times 10^{-11}$，$2.2\times 10^{-7}$）．Pure Pursuit法（青）と理想的な経路生成（青）は，7.0\,m/sで下回った（$p=3.8\times 10^{-4}$，$1.5\times 10^{-3}$）．これらの差はラップタイムの約1\,\%であり，シード間の標準偏差が小さいために検出された．完走数のFisherの正確検定（5/5対0/5で$p\approx 0.008$）は，どのセルも補正後の有意水準を下回らない．
+Table~\ref{tab:ablation}に標準構成との差を，Table~\ref{tab:ablation_terms}にどの項が変わったかを，Table~\ref{tab:ablation_comp}に完走数と横加速度の超過時間を，Fig.~\ref{fig:sim_elements}にラップタイムの差と最大横偏差を示す．差の大きさは，\ref{sec:sil_validity}節の条件間の変化の差（0.6\,s）と比べる．
 
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
-  \caption[Lap time, completion, and maximum lateral deviation of each condition.]{Lap time of the second lap (mean$\pm$SD of completed runs), number of completed runs, and mean (worst) maximum lateral deviation from the true lane center for each condition (5 seeds per cell).}
+  \caption[Lap time of each condition and the difference from the standard setting.]{Lap time of the second lap of the standard setting (mean$\pm$SD of 30 trials) and the difference of each condition from it (seconds; simulation without signal stops). $^{\dagger}$: mean of the completed trials only (Table~\ref{tab:ablation_comp}).}
   \label{tab:ablation}
-  \scriptsize
-  \renewcommand{\arraystretch}{1.3}
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{4.9cm}ccc}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{5.2cm}rrrrrr}
     \toprule
-    条件 & 4.0\,m/s & 5.5\,m/s & 7.0\,m/s \\
+    & \multicolumn{3}{c}{赤コース} & \multicolumn{3}{c}{青コース} \\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-7}
+    条件 & 4.0\,m/s & 5.0\,m/s & 6.0\,m/s & 4.0\,m/s & 5.0\,m/s & 6.0\,m/s \\
     \midrule
-    \multicolumn{4}{l}{\textbf{赤コース}} \\
-    基準 & \sscell{$65.9\pm 0.0$}{5/5・0.11 (0.12)} & \sscell{$47.9\pm 0.0$}{5/5・0.15 (0.16)} & \sscell{$38.6\pm 0.2$}{5/5・0.21 (0.31)} \\
-    Pure Pursuit法 & \sscell{$65.9\pm 0.0$}{5/5・0.45 (0.48)} & \sscell{$48.0\pm 0.0$}{5/5・0.61 (0.63)} & \sscell{$38.3\pm 0.1$}{5/5・1.06 (1.08)} \\
-    2次の平滑化 & \sscell{$65.9\pm 0.0$}{5/5・0.12 (0.15)} & \sscell{$47.9\pm 0.0$}{5/5・0.15 (0.17)} & \sscell{$38.6\pm 0.2$}{5/5・0.20 (0.24)} \\
-    合流距離を15\,mに固定 & \sscell{$65.9\pm 0.0$}{2/5・1.55 (1.77)} & \sscell{$48.0\pm 0.2$}{3/5・1.52 (1.70)} & \sscell{$39.3\pm 0.2$}{3/5・1.35 (1.60)} \\
-    2次の平滑化かつ合流距離15\,m固定（参考） & \sscell{$65.9\pm 0.0$}{2/5・1.62 (1.83)} & \sscell{$48.1\pm 0.1$}{2/5・1.60 (2.22)} & \sscell{$39.8\pm 0.6$}{4/5・1.41 (1.87)} \\
-    理想的な経路生成 & \sscell{$65.9\pm 0.0$}{5/5・0.08 (0.09)} & \sscell{$47.9\pm 0.0$}{5/5・0.06 (0.07)} & \sscell{$38.2\pm 0.0$}{5/5・0.06 (0.07)} \\
-    \midrule
-    \multicolumn{4}{l}{\textbf{青コース}} \\
-    基準 & \sscell{$65.2\pm 0.0$}{5/5・0.12 (0.15)} & \sscell{$52.1\pm 0.1$}{5/5・0.16 (0.20)} & \sscell{$45.8\pm 0.1$}{5/5・0.19 (0.22)} \\
-    Pure Pursuit法 & \sscell{$65.1\pm 0.0$}{5/5・0.84 (0.86)} & \sscell{$52.0\pm 0.1$}{5/5・0.84 (0.86)} & \sscell{$45.3\pm 0.1$}{5/5・1.07 (1.17)} \\
-    2次の平滑化 & \sscell{$65.2\pm 0.0$}{5/5・0.14 (0.20)} & \sscell{$52.1\pm 0.1$}{5/5・0.14 (0.16)} & \sscell{$45.5\pm 0.1$}{5/5・0.20 (0.24)} \\
-    合流距離を15\,mに固定 & \sscell{---}{0/5・2.36 (2.50)} & \sscell{---}{0/5・2.36 (2.43)} & \sscell{---}{0/5・2.33 (2.48)} \\
-    2次の平滑化かつ合流距離15\,m固定（参考） & \sscell{---}{0/5・2.37 (2.50)} & \sscell{---}{0/5・2.37 (2.50)} & \sscell{---}{0/5・2.31 (2.52)} \\
-    分岐での速度抑制なし & \sscell{$65.2\pm 0.0$}{5/5・0.14 (0.21)} & \sscell{$48.4\pm 0.1$}{5/5・0.17 (0.24)} & \sscell{$40.8\pm 0.3$}{5/5・0.23 (0.34)} \\
-    理想的な経路生成 & \sscell{$65.2\pm 0.0$}{5/5・0.21 (0.28)} & \sscell{$52.0\pm 0.1$}{5/5・0.23 (0.27)} & \sscell{$45.4\pm 0.1$}{5/5・0.25 (0.27)} \\
+    標準構成（ラップタイム） & \sscell{65.96}{$\pm$ 0.02} & \sscell{52.93}{$\pm$ 0.11} & \sscell{45.40}{$\pm$ 0.17} & \sscell{66.21}{$\pm$ 0.14} & \sscell{56.96}{$\pm$ 0.21} & \sscell{52.17}{$\pm$ 0.24} \\
+    \addlinespace[2pt]
+    \multicolumn{7}{l}{標準構成との差} \\
+    Pure Pursuit法（縦のPIDなし） & $-$0.41 & $-$0.49 & $-$1.18 & $-$1.89 & $-$2.06 & $-$2.99 \\
+    2次の平滑化 & $-$0.01 & $-$0.08 & $-$0.43 & $-$0.32 & $-$0.31 & $-$0.59 \\
+    合流距離を15\,mに固定 & +0.36 & +0.21 & +0.21 & $-$0.22$^{\dagger}$ & $-$0.71$^{\dagger}$ & $-$0.98$^{\dagger}$ \\
+    2次の平滑化かつ合流距離15\,m固定（併用） & $-$0.13 & $-$0.35 & $-$1.12 & $-$1.22$^{\dagger}$ & $-$1.72$^{\dagger}$ & $-$2.82$^{\dagger}$ \\
+    経路生成の揺らぎなし & 0.00 & $-$0.11 & $-$0.61 & 0.00 & $-$0.24 & $-$0.63 \\
+    車線中心の真値（平滑化なし） & +0.23 & +0.24 & $-$0.17 & +0.86 & +0.92 & +0.73 \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{各セルの上段は2周目のラップタイム [s]，下段は完走数と最大横偏差の平均（最悪値）[m]である．完走した試行がないセルのラップタイムは---とした．完走しなかった走行の最大横偏差には，2.5\,mで打ち切った値を含む．分岐での速度抑制なしは青コースのみで行った．}
+  \tblnote{$^{\dagger}$の条件は，完走した試行だけの平均であり，生存した試行の偏りを含むため，ラップタイムの差を論じない．}
 \end{table}
 
-\begin{figure}[H]
+\begin{table}[!htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{images/sil_ablation_reid.png}
-  \caption[Lap time and completion rate of each condition.]{Lap time of the second lap (mean of completed runs) and completion rate of each condition at the upper speed limits of 4.0, 5.5, and 7.0\,m/s on the red and blue courses (5 seeds). A condition without a completed run has no lap time bar.}
-  \label{fig:sil_ablation}
+  \caption[Terms of the breakdown changed by each condition at 6.0 m/s.]{Terms of the breakdown of the second lap at the upper speed limit of 6.0\,m/s: the values of the standard setting and the difference of each condition from it (seconds; simulation without signal stops; completed trials).}
+  \label{tab:ablation_terms}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{2pt}\begin{tabular}{L{3.4cm}rrrrrrrrr}
+    \toprule
+    & \multicolumn{4}{c}{赤コース} & \multicolumn{5}{c}{青コース} \\
+    \cmidrule(lr){2-5}\cmidrule(lr){6-10}
+    条件 & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{plan}}$ & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\$-\Delta T_{\mathrm{branch}}$} & $\Delta T_{\mathrm{track}}$ & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{branch}}$ & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\$-\Delta T_{\mathrm{branch}}$} & $\Delta T_{\mathrm{track}}$ \\
+    \midrule
+    標準構成の値 & 43.09 & 0.71 & 1.15 & 0.45 & 42.62 & 3.28 & 3.44 & 2.48 & 0.33 \\
+    \addlinespace[2pt]
+    \multicolumn{10}{l}{標準構成との差} \\
+    Pure Pursuit法（縦のPIDなし） & $-$0.34 & +0.02 & $-$1.13 & +0.27 & $-$0.56 & $-$0.46 & 0.00 & $-$2.46 & +0.49 \\
+    2次の平滑化 & 0.00 & $-$0.01 & $-$0.63 & +0.21 & +0.05 & $-$0.07 & +0.02 & $-$0.37 & $-$0.22 \\
+    合流距離を15\,mに固定 & +0.11 & $-$0.05 & $-$0.04 & +0.19 & $-$0.03 & $-$0.48 & +0.21 & $-$0.83 & +0.15 \\
+    2次の平滑化かつ合流距離15\,m固定（併用） & $-$0.07 & $-$0.23 & $-$0.92 & +0.10 & $-$0.59 & $-$1.03 & +0.25 & $-$0.97 & $-$0.48 \\
+    経路生成の揺らぎなし & 0.00 & $-$0.01 & $-$0.88 & +0.29 & +0.01 & $-$0.03 & +0.12 & $-$0.96 & +0.23 \\
+    車線中心の真値（平滑化なし） & +0.02 & $-$0.04 & +0.49 & $-$0.64 & $-$0.01 & $-$0.19 & $-$0.39 & +1.97 & $-$0.64 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{各行の差の和は，ラップタイムの差（Table~\ref{tab:ablation}）に等しい（$\Delta T_{\mathrm{cap}}$の差は0.04\,s以下で，表に示していない）．}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Completion and time above 2.0 m/s$^2$ of each condition.]{Number of completed trials out of 30 for each condition, and the time with lateral acceleration above 2.0\,m/s$^2$ per lap at the upper speed limit of 6.0\,m/s (seconds; simulation without signal stops).}
+  \label{tab:ablation_comp}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{4.3cm}rrrrrrrr}
+    \toprule
+    & \multicolumn{6}{c}{完走} & \multicolumn{2}{c}{$a_y>2.0$の時間} \\
+    \cmidrule(lr){2-7}\cmidrule(lr){8-9}
+    条件 & \multicolumn{3}{c}{赤コース} & \multicolumn{3}{c}{青コース} & 赤 & 青 \\
+    & 4.0 & 5.0 & 6.0 & 4.0 & 5.0 & 6.0 & 6.0 & 6.0 \\
+    \midrule
+    標準構成 & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 1.92 & 2.94 \\
+    Pure Pursuit法（縦のPIDなし） & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 4.17 & 7.22 \\
+    2次の平滑化 & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 2.36 & 2.93 \\
+    合流距離を15\,mに固定 & 30/30 & 30/30 & 30/30 & 17/30 & 10/30 & 10/30 & 2.23 & 2.48 \\
+    2次の平滑化かつ合流距離15\,m固定（併用） & 30/30 & 30/30 & 30/30 & 11/30 & 9/30 & 3/30 & 3.63 & 5.25 \\
+    経路生成の揺らぎなし & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 2.52 & 3.08 \\
+    車線中心の真値（平滑化なし） & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 30/30 & 0.78 & 1.33 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{$a_y>2.0$の時間は，完走した試行の平均である．}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{images/sim_elements.png}
+  \caption[Lap time difference and maximum lateral deviation for each condition.]{Difference of the lap time of the second lap from the standard setting (top) and the maximum lateral deviation from the true lane center (bottom; line: mean of trials, triangle: worst trial) for each condition, on the red course (a) and the blue course (b). Gray bands show the tolerance in the comparison with the real runs. The dashed line is the 1.5\,m threshold of the completion.}
+  \label{fig:sim_elements}
 \end{figure}
-
-上限速度4.0\,m/sでは，どの要素を置き換えても，または外しても，ラップタイムは変わらない（Table~\ref{tab:ablation}）．基準の内訳（Table~\ref{tab:decomp_sil}）では，$\Delta T_{\mathrm{plan}}$と$\Delta T_{\mathrm{path}}$は0.2\,s以内であり，\ref{chap:field}章の実車と同じく，短縮の余地の大部分は上限速度の設定値にある（$\Delta T_{\mathrm{cap}}$は1周あたり約21\,s）．条件間の差は，完走の可否，横偏差，5.5\,m/s以上のラップタイムに現れる．7.0\,m/s（参考値）では，上限速度の設定値が走行可能な最高速度を超えるため，$\Delta T_{\mathrm{cap}}$が0になり，超えた分が$\Delta T_{\mathrm{plan}}$に負の値として入る．赤7.0\,m/sで$T_{\mathrm{lap}}$が$T_{\mathrm{phys}}$より小さいのはこのためである．
-
-\begin{table}[H]
-  \centering
-  \caption[Breakdown of the second-lap time in the simulation.]{Breakdown of the second-lap time in the simulation (seconds per lap, mean of completed runs over 5 seeds).}
-  \label{tab:decomp_sil}
-  \scriptsize
-  \setlength{\tabcolsep}{4pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{llrrrrrrr}
-    \toprule
-    条件 & コース & \shortstack[r]{上限速度\\{[m/s]}} & $T_{\mathrm{lap}}$ & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{cap}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{path}}$ & $\Delta T_{\mathrm{track}}$ \\
-    \midrule
-    基準 & 赤 & 4.0 & 65.95 & 43.09 & $+21.55$ & $+0.00$ & $-0.03$ & $+1.35$ \\
-    基準 & 赤 & 5.5 & 47.98 & 43.10 & $+3.92$ & $+0.01$ & $+0.05$ & $+0.91$ \\
-    基準 & 赤 & 7.0 & 38.67 & 43.10 & $+0.00$ & $-5.68$ & $+0.89$ & $+0.36$ \\
-    基準 & 青 & 4.0 & 65.28 & 42.62 & $+21.29$ & $+0.00$ & $+0.14$ & $+1.22$ \\
-    基準 & 青 & 5.5 & 52.12 & 42.61 & $+3.86$ & $+0.65$ & $+4.31$ & $+0.68$ \\
-    基準 & 青 & 7.0 & 45.81 & 42.62 & $+0.00$ & $-3.70$ & $+6.72$ & $+0.17$ \\
-    分岐での速度抑制なし & 青 & 4.0 & 65.28 & 42.62 & $+21.29$ & $+0.00$ & $+0.14$ & $+1.22$ \\
-    分岐での速度抑制なし & 青 & 5.5 & 48.42 & 42.60 & $+3.86$ & $+0.61$ & $+0.66$ & $+0.69$ \\
-    分岐での速度抑制なし & 青 & 7.0 & 40.83 & 42.61 & $+0.00$ & $-3.68$ & $+1.60$ & $+0.29$ \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{信号停止を含まないため$\Delta T_{\mathrm{stop}}$は0である．標準偏差は$T_{\mathrm{lap}}$で0.02〜0.32\,s，各項で0.30\,s以下．ラップの境界は開始線の通過で定めており，$T_{\mathrm{lap}}$はTable~\ref{tab:ablation}のラップタイムと0.1\,s以内で異なる．}
-\end{table}
-
-\subsection{局所経路計画の合流距離}
-\label{sec:merge_result}
-完走の可否を左右した要素は，局所経路計画の合流距離である．合流距離を15\,mに固定した条件では，青コースの完走は全速度で0/5であり，2次の平滑化と組み合わせても同じであった（Table~\ref{tab:ablation}）．これらは基準の5/5と全試行で結果が分かれる．赤コースでも完走は2/5〜3/5に減り，最大横偏差の平均は完走の閾値（1.5\,m）付近にあって，基準を大きく上回る．2次の平滑化と組み合わせると，赤コースの完走は2/5〜4/5であった．速度に比例した合流距離（基準）では，赤・青とも全速度で5/5が完走した．
-
-合流の実効距離（合流距離の設定値と参照経路の長さの小さい方）を変えて，赤コースで最大横偏差を調べた（Table~\ref{tab:merge_intervention}）．最大横偏差は実効距離が長いほど大きい．実効距離が10\,m以下の条件では全試行が完走したが，約12\,m以上では最大横偏差の平均が閾値付近に達し，完走が減った．固定15\,mで9\,m以遠に雑音のない真値の点を加えた条件では，完走は0/5であった．青コースでは実効距離を変えた走行を行っていない．実効距離が長いほど最大横偏差が大きくなる機構は特定できていない．
-
-\begin{table}[H]
-  \centering
-  \caption[Effect of the effective merge length on the maximum lateral deviation.]{Effect of the effective merge length on the maximum lateral deviation on the red course (MPC, 5 seeds).}
-  \label{tab:merge_intervention}
-  \scriptsize
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{6.2cm}rrrrr}
-    \toprule
-    & & \multicolumn{2}{c}{4.0\,m/s} & \multicolumn{2}{c}{5.5\,m/s} \\
-    \cmidrule(lr){3-4}\cmidrule(lr){5-6}
-    条件 & \shortstack[r]{実効距離\\{[m]}} & 完走 & \shortstack[r]{最大横偏差\\{[m]}} & 完走 & \shortstack[r]{最大横偏差\\{[m]}} \\
-    \midrule
-    固定15\,m（3次の平滑化） & 15 & 2/5 & 1.55 (1.77) & 3/5 & 1.52 (1.70) \\
-    固定10\,m & 10 & 5/5 & 0.55 (0.65) & 5/5 & 0.53 (0.72) \\
-    固定15\,m，参照経路を12\,mまでに制限 & 約12 & 4/5 & 1.38 (1.77) & 3/5 & 1.29 (1.85) \\
-    固定15\,m，参照経路を9\,mまでに制限 & 約9 & 5/5 & 0.49 (0.54) & 5/5 & 0.40 (0.50) \\
-    固定15\,m，真値の点を追加 & 15 & 0/5 & 2.23 (2.33) & 0/5 & 2.33 (2.39) \\
-    固定15\,m（2次の平滑化） & 15 & 2/5 & 1.62 (1.83) & 2/5 & 1.60 (2.22) \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{最大横偏差は車線中心（真値）に対する5シード平均（括弧内は最悪値）で，完走しなかった走行は2.5\,mで打ち切った値を含む．実効距離の約12，約9\,mは別に記録した経路の平均（11.9，8.9\,m）で，この条件の走行では経路を記録していない．「真値の点を追加」は9\,m以遠に雑音のない真値の点を足した入力で，システムには存在しない．}
-\end{table}
 
 \subsection{経路追従制御}
-\label{sec:tracker_result}
-信号停止を含まない周回では，MPCをPure Pursuit法に置き換えても，完走の可否とラップタイムは変わらず（ラップタイムの差は0.5\,s以内），最大横偏差が4〜7倍に増える（Table~\ref{tab:ablation}）．ラップタイムの差のうち，補正後の有意水準を下回るのは青7.0\,m/sの約$-0.5$\,s（Pure Pursuit法の方が短い）だけで，ラップタイムの約1\,\%である．7.0\,m/sでも，最大横偏差の最悪値は閾値の1.5\,mに達しない．すなわち，この範囲では追従制御の寄与はラップタイムではなく横偏差の大きさに現れる．信号停止を含むR1相当では，MPCの結果が異なる（\ref{sec:stop_result}項）．
+Pure Pursuit法（縦方向のPID制御を使わず，参照点の計画速度をそのまま指令する構成で，R1と同じ）では，ラップタイムが標準構成より短い（青で$-1.89$，$-2.06$，$-2.99$\,s，赤で$-0.41$，$-0.49$，$-1.18$\,s）．この条件は横方向と縦方向を同時に変えている．内訳（Table~\ref{tab:ablation_terms}）では，6.0\,m/sの青で$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$が$-2.46$\,s，$T_{\mathrm{phys}}$が$-0.56$\,s（走行した軌跡が短くなった），$\Delta T_{\mathrm{plan}}$が$-0.46$\,s変わり，$\Delta T_{\mathrm{track}}$は$+0.49$\,s増える．赤の6.0\,m/sも，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$が$-1.13$\,s，$T_{\mathrm{phys}}$が$-0.34$\,sである．最大横偏差は，標準構成の0.13〜0.14\,m（赤）と0.37〜0.40\,m（青）に対し，0.45〜0.61\,m（赤）と0.83\,m（青）に増え，横加速度が2.0\,m/s$^2$を超える時間は，青の6.0\,m/sで2.94から7.22\,s/周，赤の6.0\,m/sで1.92から4.17\,s/周に増える．すなわち，ラップタイムの短縮は，計画された速度が高くなり，走行した軌跡が短くなる一方で，横偏差と横加速度の超過が増えることを伴う．
 
-\subsection{経路の平滑化}
-\label{sec:smoother_result}
-3次の平滑化を2次に置き換えても，ラップタイム，完走，最大横偏差に差はなかった（Table~\ref{tab:ablation}）．ラップタイムの差は0.3\,s以内で，シード間のばらつきと区別できない．完走はすべて5/5で，最大横偏差の平均の差は0.02\,m以内であった．
+横偏差と横加速度の超過の大きさは，シミュレーションが再現しない量である（\ref{sec:sil_validity}節）．そのため，この短縮（経路による時間差の減少と，内側を通ることによる軌跡の短縮）は，実車の短縮とは読まない．\ref{sec:sil_branch}項の$a_{y,\max}$の条件と同じ扱いである．実車では，R1とR40（赤，4.0\,m/s）で信号停止を除いたラップタイムの差は，周ごとの幅（0.5，0.7\,s）と同程度であり（\ref{sec:decomp_result}節），シミュレーションの赤4.0\,m/sの差（$-0.41$\,s）も周ごとの幅の範囲にある．
 
-\subsection{分岐での速度抑制}
-\label{sec:branch_result}
-分岐での速度抑制は，経路選択の指示が直進以外のあいだ速度計画の上限速度を4.0\,m/sに下げる機能である．速度計画の出力にのみ含まれるため，内訳では$\Delta T_{\mathrm{path}}$に入る．青コースでこの抑制を外しても全試行が完走し，ラップタイムは短くなる（Table~\ref{tab:ablation}）．短縮量は5.5\,m/sで3.7\,sである．速度が高いほど短縮量は大きく，6.0\,m/sでは約4.3\,sである（Table~\ref{tab:horizon6}）．4.0\,m/sでは抑制値と上限速度が同じであり，差はない．内訳では，短縮の大部分が$\Delta T_{\mathrm{path}}$の減少として現れる（Table~\ref{tab:decomp_sil}）．
+\subsection{経路の平滑化と局所経路計画の合流距離}
+2次の平滑化は，3次の標準構成より短く，青で$-0.32$，$-0.31$，$-0.59$\,s，赤で$-0.01$，$-0.08$，$-0.43$\,sである．赤の4.0\,m/sは標準構成との差がほぼ0である．全試行が完走し，最大横偏差の平均は赤0.13〜0.14\,m，青0.49〜0.62\,mである．
 
-代償として，抑制なしでは青コースの2つのカーブで最大横加速度が増える（Table~\ref{tab:branch_ay}）．ここで分岐カーブとは，外周コースから交差点へ向かう道へ分岐するカーブ（$s=118$〜$132$\,m，半径約4.9\,m），交差点カーブとは，交差点で曲がるカーブ（$s=169$〜$184$\,m，半径約4.6\,m）である．各区間は両端に2\,mの余裕をとり，2周分の走行の最大値を用いた．抑制なしの平均は，両カーブとも上限速度4.5\,m/sから速度計画の横加速度の上限$a_{y,\max}$を超え，交差点カーブでは7.0\,m/sで4.1\,m/s$^2$に達する．摩擦限界の6.0\,m/s$^2$に達するシードが最初に出るのは，交差点カーブの7.5\,m/sである．抑制ありでは，交差点カーブの平均はほぼ$a_{y,\max}$以下に保たれるが，分岐カーブは4.5\,m/s以上の全速度で$a_{y,\max}$を超える．抑制なしでも完走は9.0\,m/sまで5/5であり，最大横偏差も閾値に対して小さい（Table~\ref{tab:ablation}）．
+合流距離を15\,mに固定した条件（比較のために設けた条件）では，このシミュレーションの青コースの完走が，標準構成の30/30から，上限速度4.0，5.0，6.0\,m/sで17/30，10/30，10/30に減る．2次の平滑化との併用では11/30，9/30，3/30である．標準構成の完走数30/30のWilsonの95\,\%信頼区間は0.89〜1.00であり，17/30（0.39〜0.73），10/30（0.19〜0.51），11/30（0.22〜0.54），9/30（0.17〜0.48），3/30（0.03〜0.26）の区間は重ならない．失敗は，すべて経路の右側（左カーブの外側）で起き，大半が分岐カーブ直後（$s=130$〜140\,m），残りが交差点カーブ直後（$s=180$〜190\,m）である（合流距離固定の失敗13，20，20試行のうち分岐カーブ直後が10，13，18試行，併用の失敗19，21，27試行のうち18，21，24試行）．その時の速度は平均3.9〜4.4\,m/sである．この条件は，カーブの出口で局所経路が参照経路へ合流する距離を15\,mに固定しており，失敗はカーブの出口側に集中する．完走数の大きさは，シミュレーションが横偏差の大きさを再現しないため目安であり，大きく下がる向きだけを読む．赤コースでは，全試行が完走し，ラップタイムは標準構成より$+0.36$，$+0.21$，$+0.21$\,s長く，最大横偏差の平均は0.73〜0.88\,m（標準構成の0.13〜0.14\,m）である．完走数が少ない条件のラップタイムは，完走した試行だけの平均で偏りを含むため，差を論じない．
 
-ただし，抑制ありの基準でも，周回全体の最大横加速度（Table~\ref{tab:horizon6}）は両カーブの最大より大きく，例えば青5.5\,m/sでは平均3.8\,m/s$^2$である．周回全体の最大値には，両カーブ以外の区間の，経路形状以外（追従の揺れ，合流）による横加速度も含まれる．以上から，分岐での速度抑制は，経路選択箇所での減速を間に合わせるために設けたものであるが，シミュレーションの範囲では抑制なしでも完走し，その効果は交差点カーブの横加速度を$a_{y,\max}$付近に保つことに現れる．その代わりに，1周あたり3.7〜4.3\,sを要する．Fig.~\ref{fig:sil_branch}に，抑制の有無による速度の違いを示す．網掛けは経路選択の指示が直進以外の区間（速度の上限が有効な区間）である．シミュレーションの指示は旋回の完了で直進に戻るため，分岐カーブと交差点カーブの間（$s\approx 128$〜130\,m，154\,m付近）で上限が一時的に解除される．
+\subsection{経路生成}
+経路生成の揺らぎなし（雑音の尺度を0，先端の欠落なし．認識距離と平滑化は標準構成のまま）では，ラップタイムの差は青で0.00，$-0.24$，$-0.63$\,s，赤で0.00，$-0.11$，$-0.61$\,sである．上限速度が高いほど短く，6.0\,m/sで0.6\,sほどである．内訳では$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$が減る（6.0\,m/sで青$-0.96$\,s，赤$-0.88$\,s）．完走は全試行で，最大横偏差の平均は赤0.09〜0.11\,m，青0.30〜0.37\,mである．
 
-\begin{table}[H]
+車線中心の真値（平滑化なし）を与える条件（雑音をなくす，認識距離を20\,mにする，平滑化を通さない，点を0.2\,m間隔にするの4つを同時に変える）では，ラップタイムが標準構成より長く，青で$+0.86$，$+0.92$，$+0.73$\,s，赤の4.0，5.0\,m/sで$+0.23$，$+0.24$\,s，6.0\,m/sで$-0.17$\,sである．内訳では，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$が増え（青$+1.21$，$+1.67$，$+1.97$\,s），すなわち計画された速度が下がっている．$\Delta T_{\mathrm{track}}$は青の6.0\,m/sで$-0.64$\,s減り，横加速度が2.0\,m/s$^2$を超える時間は，青の4.0，5.0\,m/sでほぼ0になる（0.00，0.01\,s/周，標準構成は0.55，1.22\,s/周）．最大横偏差は，青で0.69〜0.74\,mと，標準構成（0.37〜0.40\,m）の約2倍である．揺らぎなしの条件とは$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$の変化の符号が逆であり，2つの条件の違いは，認識距離（9\,mと20\,m），平滑化の有無，点の間隔である．標準構成の参照経路は，真の車線中心を与えた場合より計画速度が高く，その分ラップタイムが短く，横加速度の超過が多い．
+
+\section{仮定値と同定値の感度}
+\label{sec:sil_sens}
+Table~\ref{tab:params_sim}の仮定値と，走行試験Aと走行試験Bで異なる同定値が，ラップタイムと\ref{sec:sil_validity}節で一致しなかった量に与える影響を，値を1項目ずつ変えて調べる．出力には，ラップタイムのほか，$\Delta T_{\mathrm{track}}$と，横加速度が2.0\,m/s$^2$を超える時間を加える．走行は，青コースと赤コースの上限速度6.0\,m/s（設定値の中で最も上限速度が高い条件），信号停止を含まない2周，各条件10試行とし，標準構成の同じ乱数の10試行と比べる．対応のある差で比べる．Table~\ref{tab:sens_cond}に変える項目を，結果をTable~\ref{tab:sens}とFig.~\ref{fig:sim_sens}に示す．
+
+\begin{table}[!htbp]
   \centering
-  \caption[Maximum lateral acceleration in the curves of the blue course.]{Maximum lateral acceleration in the intersection curve ($s=169$--$184$\,m, $R\approx 4.6$\,m) and the branch curve ($s=118$--$132$\,m, $R\approx 4.9$\,m) of the blue course, without and with the branch speed limit (5 seeds; mean$\pm$SD (maximum) in m/s$^2$).}
-  \label{tab:branch_ay}
-  \scriptsize
-  \setlength{\tabcolsep}{4pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{rcccccc}
+  \caption{Parameters varied in the sensitivity analysis.}
+  \label{tab:sens_cond}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{5.6cm}L{4.0cm}L{4.8cm}}
     \toprule
-    & \multicolumn{3}{c}{分岐での速度抑制なし} & \multicolumn{3}{c}{分岐での速度抑制あり（基準）} \\
+    項目 & 標準構成の値 & 変更後の値 \\
+    \midrule
+    並進速度のモデル（$\tau_v$，$K_v$，$T_v$） & 0.21\,s，0.98，0.05\,s & 走行試験Bの値：0.30\,s，0.99，0\,s \\
+    並進速度のむだ時間$T_v$ & 0.05\,s & 0\,s，0.10\,s \\
+    操舵のむだ時間$T_\delta$ & 0.05\,s & 0\,s，0.10\,s \\
+    撮影から経路生成の出力までの遅延 & 0.07\,s & 0.14\,s \\
+    フレーム間の相関（先端以外／先端） & 0.65／0.78 & 0.3／0.3，0.9／0.9 \\
+    揺らぎの大きさ（ラプラス分布の尺度，白色雑音） & R1とB1の値 & 1.5倍 \\
+    先端の欠落の割合 & 23\,\% & 5\,\% \\
+    認識距離（先端の行の前方距離） & 9.0\,m & 8.3\,m（上限速度を変えた9本の中央値） \\
+    摩擦限界の横加速度$a_\mu$ & 6.0\,m/s$^2$ & 4.8\,m/s$^2$ \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{揺らぎの大きさ1.5倍の条件は，4章で上限速度とともに増える揺らぎ（R1とB1の1.1〜1.7倍）に対応し，\ref{sec:sil_validity}節の$\Delta T_{\mathrm{track}}$の符号の違いを調べる条件でもある．}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Sensitivity of the lap time, the time-difference of speed tracking, and the time above 2.0 m/s$^2$.]{Lap time of the second lap, $\Delta T_{\mathrm{track}}$, and the time with lateral acceleration above 2.0\,m/s$^2$ per lap at the upper speed limit of 6.0\,m/s (simulation without signal stops, 10 trials). The first row is the standard setting (mean$\pm$SD of trials 1 to 10). The other rows show the paired difference of the lap time from it and the values of $\Delta T_{\mathrm{track}}$ and the time above 2.0\,m/s$^2$ (seconds).}
+  \label{tab:sens}
+  \footnotesize
+  \renewcommand{\arraystretch}{1.2}
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{5.6cm}rrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{赤コース} & \multicolumn{3}{c}{青コース} \\
     \cmidrule(lr){2-4}\cmidrule(lr){5-7}
-    \shortstack[r]{上限速度\\{[m/s]}} & 交差点カーブ & 分岐カーブ & 完走 & 交差点カーブ & 分岐カーブ & 完走 \\
+    条件 & $T_{\mathrm{lap}}$ & $\Delta T_{\mathrm{track}}$ & \shortstack[r]{$a_y>2.0$\\の時間} & $T_{\mathrm{lap}}$ & $\Delta T_{\mathrm{track}}$ & \shortstack[r]{$a_y>2.0$\\の時間} \\
     \midrule
-    4.0 & 2.9$\pm$0.1 (3.0) & 2.9$\pm$0.1 (3.0) & 5/5 & 2.8$\pm$0.1 (2.9) & 2.9$\pm$0.1 (3.0) & 5/5 \\
-    4.5 & \textbf{3.0}$\pm$0.3 (3.4) & \textbf{3.4}$\pm$0.3 (3.9) & 5/5 & \textbf{3.0}$\pm$0.2 (3.3) & \textbf{3.1}$\pm$0.1 (3.2) & 5/5 \\
-    5.0 & \textbf{3.2}$\pm$0.2 (3.5) & \textbf{3.8}$\pm$0.4 (4.4) & 5/5 & 2.9$\pm$0.1 (3.0) & \textbf{3.3}$\pm$0.3 (3.7) & 5/5 \\
-    5.5 & \textbf{3.5}$\pm$0.2 (3.8) & \textbf{3.8}$\pm$0.3 (4.1) & 5/5 & 2.9$\pm$0.3 (3.3) & \textbf{3.2}$\pm$0.2 (3.4) & 5/5 \\
-    6.0 & \textbf{3.8}$\pm$0.2 (4.0) & \textbf{3.8}$\pm$0.2 (4.1) & 5/5 & 2.8$\pm$0.1 (2.9) & \textbf{3.2}$\pm$0.3 (3.5) & 5/5 \\
-    6.5 & \textbf{3.7}$\pm$0.2 (3.9) & \textbf{4.2}$\pm$0.4 (4.9) & 5/5 & 3.0$\pm$0.5 (3.8) & \textbf{3.6}$\pm$0.4 (4.2) & 5/5 \\
-    7.0 & \textbf{4.1}$\pm$0.3 (4.4) & \textbf{4.2}$\pm$0.3 (4.5) & 5/5 & 2.8$\pm$0.2 (3.0) & \textbf{3.1}$\pm$0.3 (3.5) & 5/5 \\
-    7.5 & \textbf{4.6}$\pm$0.9 (6.0) & \textbf{4.8}$\pm$0.8 (5.6) & 5/5 & 2.8$\pm$0.1 (2.9) & \textbf{3.3}$\pm$0.4 (3.8) & 5/5 \\
-    8.0 & \textbf{4.5}$\pm$0.4 (4.9) & \textbf{4.8}$\pm$1.0 (6.0) & 5/5 & 2.8$\pm$0.1 (3.0) & \textbf{3.4}$\pm$0.2 (3.6) & 5/5 \\
-    8.5 & \textbf{5.1}$\pm$0.7 (6.0) & \textbf{5.0}$\pm$1.0 (6.0) & 5/5 & 2.9$\pm$0.2 (3.1) & \textbf{3.7}$\pm$0.3 (4.0) & 5/5 \\
-    9.0 & \textbf{5.1}$\pm$1.1 (6.0) & \textbf{5.0}$\pm$0.6 (6.0) & 5/5 & 2.8$\pm$0.3 (3.1) & \textbf{3.6}$\pm$0.2 (3.9) & 5/5 \\
+    標準構成の値 & 45.43$\pm$ 0.21 & +0.44 & 2.0 & 52.09$\pm$ 0.25 & +0.29 & 3.3 \\
+    \addlinespace[2pt]
+    \multicolumn{7}{l}{標準構成とのラップタイムの差，および各条件の値} \\
+    並進速度のモデル（走行試験Bの値） & $-$0.34 & +0.13 & 2.4 & $-$0.11 & +0.13 & 3.0 \\
+    並進速度のむだ時間 0\,s & $-$0.11 & +0.36 & 2.2 & $-$0.09 & +0.37 & 3.0 \\
+    並進速度のむだ時間 0.10\,s & $-$0.04 & +0.48 & 1.9 & +0.09 & +0.34 & 3.2 \\
+    操舵のむだ時間 0\,s & 0.00 & +0.52 & 1.8 & $-$0.12 & +0.38 & 2.9 \\
+    操舵のむだ時間 0.10\,s & $-$0.01 & +0.35 & 2.2 & +0.12 & +0.22 & 3.6 \\
+    撮影から経路生成の出力までの遅延 0.14\,s & +0.03 & +0.51 & 2.0 & $-$0.59 & +0.33 & 4.0 \\
+    フレーム間の相関 0.3／0.3 & +0.10 & +0.24 & 1.9 & +0.08 & +0.13 & 3.0 \\
+    フレーム間の相関 0.9／0.9 & $-$0.24 & +0.51 & 2.4 & $-$0.12 & +0.41 & 3.1 \\
+    揺らぎの大きさ 1.5倍 & +0.85 & $-$0.11 & 2.2 & +0.54 & $-$0.35 & 3.3 \\
+    先端の欠落の割合 5\,\% & $-$0.06 & +0.44 & 2.0 & $-$0.01 & +0.35 & 3.1 \\
+    認識距離 8.3\,m & +0.23 & +0.40 & 1.9 & +0.11 & +0.20 & 3.4 \\
+    摩擦限界 4.8\,m/s$^2$ & $-$0.03 & +0.41 & 2.1 & $-$0.04 & +0.35 & 3.0 \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{太字は5シードの平均が$a_{y,\max}$（3.0\,m/s$^2$）を超える値である（3.0と表示される太字は3.03，3.01）．括弧内の6.0は，摩擦限界6.0\,m/s$^2$に達したシードがあることを示す．6.5\,m/s以上は，試験で到達を確認した最高速度6.0\,m/sを超える参考値である．}
-\end{table}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.98\textwidth]{images/sil_branch_speed_reid.png}
-  \caption[Simulated speed around the branch curve and the intersection.]{Simulated vehicle speed around the branch curve and the intersection of the blue course at upper speed limits of 5.5\,m/s (left) and 7.0\,m/s (right), without and with the branch speed limit.}
-  \label{fig:sil_branch}
-\end{figure}
-
-\subsection{経路生成の雑音と認識距離}
-\label{sec:noise_result}
-理想的な経路生成（雑音なし）でも，完走はすべて5/5で変わらず，ラップタイムの差は0.4\,s以内である（Table~\ref{tab:ablation}）．青7.0\,m/sの差は補正後の有意水準を下回るが，ラップタイムの約1\,\%である．最大横偏差は，赤では減る一方，青では増える．青で増えた原因は調べていない．この範囲では，経路生成の雑音は完走に影響せず，ラップタイムへの影響も小さい．
-
-実車では認識距離が6\,m未満のフレームが23.0\,\%ある（Table~\ref{tab:patherr}）．そこで，前方にカーブがあるフレームで認識距離を6\,mに短縮する条件（6/9\,m切替，Table~\ref{tab:conditions}）を，基準と分岐での速度抑制なしに適用して比べた（Table~\ref{tab:horizon6}）．全試行が完走し，ラップタイムの差は0.4\,s以内であった．周回全体の最大横加速度の平均の差は0.7\,m/s$^2$以内で，増減の向きは一定でない．この範囲では，認識距離をカーブで6\,mに短縮しても，ラップタイムと完走に差は現れない．
-
-\begin{table}[H]
-  \centering
-  \caption[Effect of shortening the recognition distance in curves.]{Effect of shortening the recognition distance to 6\,m in curves (6/9\,m switching) on the lap time and the maximum lateral acceleration (5 seeds).}
-  \label{tab:horizon6}
-  \scriptsize
-  \renewcommand{\arraystretch}{1.3}
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{5.2cm}cccc}
-    \toprule
-    条件 & 5.0\,m/s & 5.5\,m/s & 6.0\,m/s & 7.0\,m/s \\
-    \midrule
-    \multicolumn{5}{l}{\textbf{赤コース}} \\
-    基準（9\,m一定） & \sscell{$52.7\pm 0.0$}{2.9 (3.2)} & \sscell{$47.9\pm 0.0$}{3.5 (4.4)} & \sscell{$44.0\pm 0.1$}{3.8 (4.2)} & \sscell{$38.6\pm 0.2$}{4.3 (4.7)} \\
-    基準（6/9\,m切替） & \sscell{$52.7\pm 0.0$}{2.9 (3.2)} & \sscell{$47.9\pm 0.0$}{3.4 (3.6)} & \sscell{$44.1\pm 0.1$}{3.9 (5.0)} & \sscell{$38.5\pm 0.1$}{4.9 (6.0)} \\
-    \midrule
-    \multicolumn{5}{l}{\textbf{青コース}} \\
-    基準（9\,m一定） & \sscell{$55.4\pm 0.1$}{3.3 (3.7)} & \sscell{$52.1\pm 0.1$}{3.8 (5.3)} & \sscell{$49.3\pm 0.1$}{4.0 (4.7)} & \sscell{$45.8\pm 0.1$}{4.5 (4.9)} \\
-    基準（6/9\,m切替） & \sscell{$55.5\pm 0.1$}{3.3 (3.7)} & \sscell{$52.1\pm 0.1$}{3.3 (3.6)} & \sscell{$49.4\pm 0.1$}{3.9 (4.5)} & \sscell{$45.6\pm 0.2$}{4.5 (4.8)} \\
-    分岐での速度抑制なし（9\,m一定） & \sscell{$52.7\pm 0.2$}{3.8 (4.4)} & \sscell{$48.4\pm 0.1$}{3.9 (4.1)} & \sscell{$45.1\pm 0.2$}{3.9 (4.1)} & \sscell{$40.8\pm 0.3$}{4.9 (6.0)} \\
-    分岐での速度抑制なし（6/9\,m切替） & \sscell{$52.8\pm 0.1$}{4.0 (4.3)} & \sscell{$48.5\pm 0.1$}{4.0 (5.4)} & \sscell{$45.1\pm 0.1$}{4.1 (4.3)} & \sscell{$40.4\pm 0.3$}{4.7 (5.1)} \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{各セルの上段は2周目のラップタイム [s]，下段は周回全体の最大横加速度の平均（最大）[m/s$^2$]である．全セルで5/5が完走した．7.0\,m/sの列は，試験で到達を確認した最高速度6.0\,m/sを超える参考値である．}
-\end{table}
-
-\subsection{信号停止}
-\label{sec:stop_result}
-信号停止は赤コース（コーンの位置$s=136$\,m）で評価した．停止は速度が0.05\,m/s未満になったことで判定し，行き過ぎは，真の停止線（コーンの3.3\,m手前）を越えた量を正とする．停止点は報告されたコーンの位置の3.3\,m手前に発行されるため，停止点までの距離は報告距離から3.3\,mを引いた値である．停止点が最初に発行されたときの停止点までの距離を$d_0$と書く．Table~\ref{tab:signal_stop}に，距離誤差の与え方と停止専用の減速度の有無による結果を示す．
-
-実測の距離誤差を与えた検出モデルでは，コーンの報告距離が遠方で実距離より小さくなるため，$d_0$の中央値は約6.8\,mとなり，実車R1の約7.0\,m（Table~\ref{tab:ident_lap}）に近い．この条件で，基準は全速度で5/5が停止し，平均では停止線を越えて止まった（Fig.~\ref{fig:sil_stop}）．距離誤差なしでは，$d_0$が約14\,mと長く，基準は停止線の付近か手前で止まる．停止専用の減速度をなくしても全試行が停止し，行き過ぎの差は0.4\,m以内で，その向きは速度によって一定でない．したがって，停止専用の減速度の効果は小さい．すべての条件で，行き過ぎは最大$+0.86$\,mである．
-
-\begin{table}[H]
-  \centering
-  \caption[Stop overshoot and the distance to the first stop point in the simulation.]{Stop overshoot on the red course (5 seeds; mean (range)) and the distance to the stop point when it is first issued, $d_0$. The overshoot is positive beyond the true stop line.}
-  \label{tab:signal_stop}
-  \scriptsize
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{4.4cm}rcL{3.6cm}L{2.8cm}}
-    \toprule
-    条件 & \shortstack[r]{上限速度\\{[m/s]}} & 停止 & 行き過ぎ [m] & $d_0$ [m] \\
-    \midrule
-    \multicolumn{5}{l}{\textbf{実測の距離誤差あり}} \\
-    基準 & 4.0 & 5/5 & $+0.82$ ($+0.66$〜$+0.86$) & 6.8 (6.7〜6.8) \\
-    基準 & 5.5 & 5/5 & $+0.70$ ($+0.66$〜$+0.86$) & 6.7 (6.7〜6.7) \\
-    基準 & 7.0 & 5/5 & $+0.18$ ($-0.13$〜$+0.66$) & 6.8 (6.7〜6.8) \\
-    停止専用の減速度なし & 4.0 & 5/5 & $+0.86$ ($+0.86$〜$+0.86$) & 6.8 (6.8〜6.8) \\
-    停止専用の減速度なし & 5.5 & 5/5 & $+0.86$ ($+0.86$〜$+0.86$) & 6.7 (6.7〜6.8) \\
-    停止専用の減速度なし & 7.0 & 5/5 & $-0.17$ ($-0.92$〜$+0.46$) & 6.7 (6.7〜6.8) \\
-    \midrule
-    \multicolumn{5}{l}{\textbf{距離誤差なし}} \\
-    基準 & 4.0 & 5/5 & $+0.06$ ($+0.06$〜$+0.06$) & 14.2 (14.1〜14.3) \\
-    基準 & 5.5 & 5/5 & $-0.13$ ($-0.13$〜$-0.13$) & 14.3 (13.9〜14.3) \\
-    基準 & 7.0 & 5/5 & $-0.45$ ($-0.53$〜$-0.33$) & 14.2 (14.1〜14.4) \\
-    停止専用の減速度なし & 4.0 & 5/5 & $-0.05$ ($-0.13$〜$+0.06$) & 14.2 (14.1〜14.4) \\
-    停止専用の減速度なし & 5.5 & 5/5 & $-0.45$ ($-0.72$〜$-0.33$) & 14.3 (14.1〜14.3) \\
-    停止専用の減速度なし & 7.0 & 5/5 & $-0.65$ ($-0.72$〜$-0.53$) & 14.0 (13.7〜14.2) \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{停止は，走行中のどこかで$t>5$\,sかつ速度が0.05\,m/s未満になったことで判定した（$s=165$\,mまで走行）．実車R1の行き過ぎはTable~\ref{tab:validity}に示す．}
-\end{table}
-
-Fig.~\ref{fig:sil_stop}に，信号停止の行き過ぎを上限速度ごとに示す．
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.95\textwidth]{images/sil_stop_reid.png}
-  \caption[Stop overshoot at the signal versus the upper speed limit.]{Stop overshoot at the signal on the red course versus the upper speed limit (5 seeds; bars: mean, lines: range). The overshoot is positive beyond the true stop line, and all runs stopped. The diamonds are the three stops of the real R1.}
-  \label{fig:sil_stop}
-\end{figure}
-
-R1と同じ構成でも，Pure Pursuit法をMPCに置き換えると結果が変わる（Table~\ref{tab:validity}）．実測の距離誤差ありの条件では，MPCの停止による時間差$\Delta T_{\mathrm{stop}}$は1回あたり約15\,sであり，Pure Pursuit法の2倍以上である．そのため，ラップタイムはPure Pursuit法より約8\,s長い．時間差が大きい原因は，停止線へ低速のまま接近することとみられるが，確かめていない．完走は4/5であり，完走しなかった1本の最大横偏差は約1.8\,mであった．距離誤差なしでは，MPCの停止の時間差はPure Pursuit法より1.3〜1.7\,s大きいだけであるが，完走は同じく4/5である．MPCと信号停止の組合せは実車で確認していない．
-
-\section{上限速度の段階と制約要因}
-\label{sec:bottleneck}
-本節では，まず上限速度を0.5\,m/s刻みで上げた掃引の結果を示し（\ref{sec:sweep}項），次に上限速度の段階ごとにラップタイムと完走を制約する要因を，実車とシミュレーションの結果としてTable~\ref{tab:bottleneck}にまとめ（\ref{sec:stages}項），最後に\ref{sec:limit_method}節の条件式による見積もりをシミュレーションと照合する（\ref{sec:threshold_check}項，Table~\ref{tab:thresholds}）．実車の走行はR1，B1の2本だけであり，それより高い上限速度の結果はシミュレーションの予測である．さらに，試験で到達を確認した最高速度（6.0\,m/s，Table~\ref{tab:phys}）を超える上限速度の結果は参考値であり，内訳では$\Delta T_{\mathrm{cap}}$が0になる．
-
-\subsection{上限速度の掃引}
-\label{sec:sweep}
-\ref{sec:ablation}節の比較は上限速度4.0，5.5，7.0\,m/sの3段階であった．制約が現れる速度を細かく見るため，上限速度を4.0\,m/sから0.5\,m/s刻みで上げ，周回は9.0\,m/sまで，信号停止は10.0\,m/sまで走行させた．周回の条件は，基準，Pure Pursuit法，合流距離を15\,mに固定，理想的な経路生成（赤・青）と，分岐での速度抑制なし（青）の計9組，信号停止の条件はTable~\ref{tab:signal_stop}の4組である．4.0，5.5，7.0\,m/s（基準と分岐での速度抑制なしは5.0，6.0\,m/sも）の走行はTable~\ref{tab:ablation}，Table~\ref{tab:branch_ay}，Table~\ref{tab:horizon6}と同じものであり，それ以外の速度を同じ設定で追加した．各セルは5シードである．以下では，完走の失敗（最大横偏差が1.5\,mを超える），摩擦限界への到達（周回全体の最大横加速度が6.0\,m/s$^2$に達する），停止の失敗（速度が0.05\,m/s未満にならない，または行き過ぎが3.3\,m以上でコーンに到達する）のそれぞれが，5シードのいずれかで最初に起きる上限速度を，その制約が現れる速度と呼ぶ．ラップタイムのシード間の標準偏差は，基準で0.45\,s以下，分岐での速度抑制なしの9.0\,m/sで最大1.05\,sである．6.0\,m/sを超える結果は参考値である．
-
-Table~\ref{tab:sweep_base}に基準の結果を，Fig.~\ref{fig:sil_sweep_lap}とFig.~\ref{fig:sil_sweep_dev}に全条件のラップタイム，完走率，最大横偏差と最大横加速度の最悪値を，Table~\ref{tab:sweep_breakdown}に各制約が現れる速度を示す．
-
-\begin{table}[!htbp]
-  \centering
-  \caption[Baseline results versus the upper speed limit.]{Baseline results versus the upper speed limit in 0.5\,m/s steps (5 seeds): lap time of the second lap (mean$\pm$SD of completed runs), number of completed runs, mean (worst) maximum lateral deviation from the true lane center, and mean (worst) maximum lateral acceleration over the lap.}
-  \label{tab:sweep_base}
-  \scriptsize
-  \setlength{\tabcolsep}{4pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{rcccccccc}
-    \toprule
-    & \multicolumn{4}{c}{赤コース} & \multicolumn{4}{c}{青コース} \\
-    \cmidrule(lr){2-5}\cmidrule(lr){6-9}
-    \shortstack[r]{上限速度\\{[m/s]}} & ラップ [s] & 完走 & \shortstack{最大横偏差\\{[m]}} & \shortstack{最大横加速度\\{[m/s$^2$]}} & ラップ [s] & 完走 & \shortstack{最大横偏差\\{[m]}} & \shortstack{最大横加速度\\{[m/s$^2$]}} \\
-    \midrule
-    4.0 & $65.9\pm 0.0$ & 5/5 & 0.11 (0.12) & 1.8 (2.2) & $65.2\pm 0.0$ & 5/5 & 0.12 (0.15) & 2.9 (3.0) \\
-    4.5 & $58.6\pm 0.0$ & 5/5 & 0.14 (0.19) & 2.2 (2.3) & $59.6\pm 0.1$ & 5/5 & 0.14 (0.17) & 3.2 (3.3) \\
-    5.0 & $52.7\pm 0.0$ & 5/5 & 0.15 (0.16) & 2.9 (3.2) & $55.4\pm 0.1$ & 5/5 & 0.13 (0.15) & 3.3 (3.7) \\
-    5.5 & $47.9\pm 0.0$ & 5/5 & 0.15 (0.16) & 3.5 (4.4) & $52.1\pm 0.1$ & 5/5 & 0.16 (0.20) & 3.8 (5.3) \\
-    6.0 & $44.0\pm 0.1$ & 5/5 & 0.17 (0.18) & 3.8 (4.2) & $49.3\pm 0.1$ & 5/5 & 0.17 (0.21) & 4.0 (4.7) \\
-    6.5 & $40.9\pm 0.1$ & 5/5 & 0.16 (0.18) & 4.3 (4.7) & $47.4\pm 0.2$ & 5/5 & 0.16 (0.20) & 4.3 (5.4) \\
-    7.0 & $38.6\pm 0.2$ & 5/5 & 0.21 (0.31) & 4.3 (4.7) & $45.8\pm 0.1$ & 5/5 & 0.19 (0.22) & 4.5 (5.0) \\
-    7.5 & $36.9\pm 0.2$ & 5/5 & 0.21 (0.22) & 4.7 (5.1) & $44.5\pm 0.2$ & 5/5 & 0.22 (0.25) & 5.0 (5.4) \\
-    8.0 & $35.9\pm 0.4$ & 5/5 & 0.25 (0.45) & 5.4 (6.0) & $43.8\pm 0.2$ & 5/5 & 0.18 (0.23) & 5.3 (6.0) \\
-    8.5 & $35.1\pm 0.4$ & 5/5 & 0.22 (0.29) & 5.6 (6.0) & $43.2\pm 0.3$ & 5/5 & 0.18 (0.21) & 5.8 (6.0) \\
-    9.0 & $34.5\pm 0.4$ & 5/5 & 0.23 (0.28) & 5.7 (6.0) & $42.7\pm 0.4$ & 5/5 & 0.21 (0.24) & 5.9 (6.0) \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{最大横偏差と最大横加速度は5シードの平均（最悪値）である．括弧内の6.0は，摩擦限界6.0\,m/s$^2$に達したシードがあることを示す．6.5\,m/s以上は，試験で到達を確認した最高速度6.0\,m/sを超える参考値である．}
+  \tblnote{ラップタイムの列は標準構成との差である．実車の$\Delta T_{\mathrm{track}}$は赤R60が$-1.69$\,s，青B60aとB60bが$-2.04$，$-2.62$\,s，$a_y>2.0$の時間は赤R60が8.9\,s/周，青が10.3，6.7\,s/周である．}
 \end{table}
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.95\textwidth]{images/sil_sweep_lap.png}
-  \caption[Lap time and completion rate versus the upper speed limit.]{Lap time of the second lap (mean of completed runs) and completion rate of each condition versus the upper speed limit, 4.0 to 9.0\,m/s in 0.5\,m/s steps (5 seeds). The shaded region is above the maximum speed confirmed in the vehicle tests (6.0\,m/s).}
-  \label{fig:sil_sweep_lap}
+  \includegraphics[width=0.98\textwidth]{images/sim_sens.png}
+  \caption[Sensitivity to the parameters.]{Difference from the standard setting of the lap time (left), the time with lateral acceleration above 2.0\,m/s$^2$ per lap (middle), and $\Delta T_{\mathrm{track}}$ (right) for each changed parameter at the upper speed limit of 6.0\,m/s (10 trials).}
+  \label{fig:sim_sens}
 \end{figure}
 
-\begin{figure}[!htbp]
-  \centering
-  \includegraphics[width=0.95\textwidth]{images/sil_sweep_dev.png}
-  \caption[Worst lateral deviation and lateral acceleration versus the upper speed limit.]{Worst (over 5 seeds) maximum lateral deviation from the true lane center and worst maximum lateral acceleration over the lap versus the upper speed limit. The dashed lines are the completion threshold (1.5\,m) and the planning limit $a_{y,\max}$ (3.0\,m/s$^2$); the dotted line is the friction limit (6.0\,m/s$^2$). The shaded region is above 6.0\,m/s.}
-  \label{fig:sil_sweep_dev}
-\end{figure}
+24条件（12項目の変更を赤と青で）の全試行が完走し，全試行の最大横偏差は0.64\,m以下である．摩擦限界の横加速度に達した試行は，摩擦限界を4.8\,m/s$^2$にした条件を含め，0試行である．ラップタイムの標準構成との差は，すべて1\,s未満である．0.6\,sを超えたのは，揺らぎの大きさ1.5倍の赤（$+0.85$\,s）だけであり，青（$+0.54$\,s）と，撮影から経路生成の出力までの遅延0.14\,sの青（$-0.59$\,s）がこれに近い．認識距離8.3\,m（$+0.23$，$+0.11$\,s），フレーム間の相関（$+0.10$〜$-0.24$\,s），並進速度と操舵のむだ時間（$\pm 0.12$\,s以内）は，0.35\,s以内である．
 
-基準は，赤・青とも9.0\,m/sまで全セルで5/5が完走し，最大横偏差の最悪値は赤で0.45\,m（8.0\,m/s），青で0.25\,m以下であった．Pure Pursuit法と理想的な経路生成も全セルで完走した．Pure Pursuit法の最大横偏差は速度とともに増え，最悪値は赤で1.31\,m（8.0\,m/s），青で1.35\,m（8.5\,m/s）に達するが，閾値の1.5\,mは超えない．合流距離を15\,mに固定した条件は，青では全速度で0/5，赤では2/5〜5/5であり，完走数は速度に対して単調でない．すなわち，掃引の範囲では，完走を失う条件は合流距離の固定だけであり，上限速度を9.0\,m/sまで上げても完走の失敗は現れなかった（Table~\ref{tab:sweep_breakdown}）．
+並進速度のモデルを走行試験Bの値にすると，ラップタイムは赤で$-0.34$\,s，青で$-0.11$\,s変わり，$\Delta T_{\mathrm{track}}$は赤で$+0.44$から$+0.13$\,s，青で$+0.29$から$+0.13$\,sに減るが，符号は正のままである．
 
-ラップタイムは，赤の基準で65.9\,s（4.0\,m/s）から34.5\,s（9.0\,m/s）へ，青の基準で65.2\,sから42.7\,sへ短くなる．上限速度を0.5\,m/s上げたときの短縮量は，4.0から4.5\,m/sでは赤7.3\,s，青5.6\,sであるが，8.5から9.0\,m/sでは0.6\,s，0.5\,sに減る．条件間の差は，分岐での速度抑制なしを除き，7.0\,m/s以下では0.7\,s以内であり，7.5\,m/s以上で理想的な経路生成が基準より短くなる（9.0\,m/sで赤2.5\,s，青1.3\,s）．分岐での速度抑制なしと基準の差は，4.5\,m/sの1.4\,sから6.0\,m/sの4.3\,s，7.0\,m/sの5.0\,sまで増え，7.5\,m/s以上では5.4〜5.6\,sでほぼ一定になる．
-
-周回全体の最大横加速度の平均が速度計画の上限$a_{y,\max}$を超え始める速度は，赤の基準で5.5\,m/s，青の基準で4.5\,m/s（カーブの横加速度，Table~\ref{tab:branch_ay}）である．摩擦限界6.0\,m/s$^2$に達するシードが最初に出る速度は，基準で赤・青とも8.0\,m/s（各1/5）であり，9.0\,m/sでも2/5（赤），3/5（青）にとどまる．達している時間は走行時間の0.3\,\%以下である．分岐での速度抑制なしでは7.0\,m/s（1/5）から出て，9.0\,m/sで4/5になる．合流距離を15\,mに固定した条件では赤7.5\,m/s，青6.5\,m/sから出る．一方，理想的な経路生成では最悪値が赤で3.7，青で4.2\,m/s$^2$以下にとどまり，9.0\,m/sでも摩擦限界に達しない．Pure Pursuit法も最悪値は5.4\,m/s$^2$以下で，達しない．したがって，基準で$a_{y,\max}$を超える横加速度の大部分は，コースの曲率によるものではなく，経路生成の雑音に経路追従制御が応答することで生じており，その大きさはMPCの方がPure Pursuit法より大きい．
-
-\begin{table}[!htbp]
-  \centering
-  \caption[Upper speed limit at which each constraint first appears.]{Upper speed limit at which each constraint first appears in any of the 5 seeds: completion failure (maximum lateral deviation above 1.5\,m), reaching the friction limit (maximum lateral acceleration of 6.0\,m/s$^2$), and the mean maximum lateral acceleration exceeding the planning limit $a_{y,\max}$. For the signal stop, the speed at which a run fails to stop.}
-  \label{tab:sweep_breakdown}
-  \scriptsize
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{4.6cm}cL{2.6cm}L{3.9cm}L{2.2cm}}
-    \toprule
-    条件 & コース & 完走の失敗 & 摩擦限界への到達 & 平均が$a_{y,\max}$を超える \\
-    \midrule
-    基準 & 赤 & なし & 8.0\,m/s（1/5．9.0で2/5） & 5.5\,m/s \\
-    基準 & 青 & なし & 8.0\,m/s（1/5．9.0で3/5） & 4.5\,m/s \\
-    分岐での速度抑制なし & 青 & なし & 7.0\,m/s（1/5．9.0で4/5） & 4.5\,m/s \\
-    Pure Pursuit法 & 赤 & なし & なし（最悪値5.2） & 6.0\,m/s \\
-    Pure Pursuit法 & 青 & なし & なし（最悪値5.4） & 4.5\,m/s \\
-    合流距離を15\,mに固定 & 赤 & 4.0\,m/s（全速度で2/5〜5/5） & 7.5\,m/s（2/5．9.0で5/5） & 4.5\,m/s \\
-    合流距離を15\,mに固定 & 青 & 4.0\,m/s（全速度で0/5） & 6.5\,m/s（1/5．9.0で5/5） & 4.0\,m/s \\
-    理想的な経路生成 & 赤 & なし & なし（最悪値3.7） & 6.0\,m/s \\
-    理想的な経路生成 & 青 & なし & なし（最悪値4.2） & 4.5\,m/s \\
-    \midrule
-    \multicolumn{5}{l}{\textbf{信号停止（赤コース）}} \\
-    基準（距離誤差あり） & 赤 & \multicolumn{3}{l}{停止の失敗：10.0\,m/s（1/5）} \\
-    停止専用の減速度なし（距離誤差あり） & 赤 & \multicolumn{3}{l}{停止の失敗：10.0\,m/s（1/5）} \\
-    基準（距離誤差なし） & 赤 & \multicolumn{3}{l}{なし（10.0\,m/sまで5/5が停止）} \\
-    停止専用の減速度なし（距離誤差なし） & 赤 & \multicolumn{3}{l}{なし（10.0\,m/sまで5/5が停止）} \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{周回は4.0〜9.0\,m/s，信号停止は4.0〜10.0\,m/sの0.5\,m/s刻み，各5シードである．「なし」は掃引の範囲で現れなかったことを示す．距離誤差ありは実測の距離誤差を与えた検出モデルである．括弧内は，最初に現れた速度でのシード数と9.0\,m/sでのシード数，または最悪値 [m/s$^2$]である．6.0\,m/sを超える速度は参考値である．}
-\end{table}
-
-Table~\ref{tab:decomp_sweep}とFig.~\ref{fig:sil_sweep_decomp}に，基準（赤・青）と分岐での速度抑制なし（青）の2周目の内訳を示す．$\Delta T_{\mathrm{cap}}$は上限速度とともに減り，6.0\,m/sで0になる．6.5\,m/s以上では，上限速度の設定値が走行可能な最高速度を超えるため，超えた分が$\Delta T_{\mathrm{plan}}$に負の値として入る（参考値）．赤の$\Delta T_{\mathrm{path}}$は6.0\,m/sまで0.2\,s以内であるが，6.5\,m/s以上で増え，9.0\,m/sで3.8\,sになる．理想的な経路生成ではこの速度域でラップタイムが基準より短くなる（9.0\,m/sで2.5\,s）ことから，この増加は経路生成の雑音が速度計画に入ることによるとみられる．青の基準の$\Delta T_{\mathrm{path}}$は4.5\,m/sから増え，6.0\,m/sで5.3\,s，9.0\,m/sで8.8\,sになる．分岐での速度抑制なしとの差（抑制による時間差）は，4.5\,m/sの1.6\,sから6.0\,m/sの4.4\,sまで増え，7.0\,m/s以上では5.0〜5.2\,sでほぼ一定になる．これは，抑制区間の速度が4.0\,m/sで固定される一方，抑制なしの同じ区間の速度がカーブの速度と最高速度で頭打ちになるためとみられる．$\Delta T_{\mathrm{track}}$は$+1.4$〜$-1.7$\,sの範囲にあり，速度とともに減って7.5\,m/s以上では負になる．
-
-\begin{table}[!htbp]
-  \centering
-  \caption[Breakdown of the second-lap time versus the upper speed limit.]{Breakdown of the second-lap time versus the upper speed limit (seconds per lap, mean of completed runs over 5 seeds) for the baseline on the red and blue courses and for the blue course without the branch speed limit.}
-  \label{tab:decomp_sweep}
-  \scriptsize
-  \setlength{\tabcolsep}{5pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{rrrrrrr}
-    \toprule
-    \shortstack[r]{上限速度\\{[m/s]}} & $T_{\mathrm{lap}}$ & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{cap}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{path}}$ & $\Delta T_{\mathrm{track}}$ \\
-    \midrule
-    \multicolumn{7}{l}{\textbf{基準，赤コース}} \\
-    4.0 & 65.95 & 43.09 & $+21.55$ & $+0.00$ & $-0.03$ & $+1.35$ \\
-    4.5 & 58.64 & 43.10 & $+14.37$ & $+0.00$ & $-0.02$ & $+1.19$ \\
-    5.0 & 52.77 & 43.10 & $+8.62$ & $+0.00$ & $+0.00$ & $+1.05$ \\
-    5.5 & 47.98 & 43.10 & $+3.92$ & $+0.01$ & $+0.05$ & $+0.91$ \\
-    6.0 & 44.07 & 43.10 & $+0.00$ & $+0.06$ & $+0.22$ & $+0.69$ \\
-    6.5 & 40.98 & 43.09 & $+0.00$ & $-3.08$ & $+0.49$ & $+0.48$ \\
-    7.0 & 38.67 & 43.10 & $+0.00$ & $-5.68$ & $+0.89$ & $+0.36$ \\
-    7.5 & 36.90 & 43.09 & $+0.00$ & $-7.70$ & $+1.36$ & $+0.14$ \\
-    8.0 & 35.89 & 43.09 & $+0.00$ & $-9.40$ & $+2.39$ & $-0.19$ \\
-    8.5 & 35.16 & 43.10 & $+0.00$ & $-10.74$ & $+3.11$ & $-0.31$ \\
-    9.0 & 34.51 & 43.10 & $+0.00$ & $-11.61$ & $+3.79$ & $-0.77$ \\
-    \midrule
-    \multicolumn{7}{l}{\textbf{基準，青コース}} \\
-    4.0 & 65.28 & 42.62 & $+21.29$ & $+0.00$ & $+0.14$ & $+1.22$ \\
-    4.5 & 59.65 & 42.62 & $+14.19$ & $+0.09$ & $+1.97$ & $+0.78$ \\
-    5.0 & 55.51 & 42.62 & $+8.52$ & $+0.32$ & $+3.32$ & $+0.74$ \\
-    5.5 & 52.12 & 42.61 & $+3.86$ & $+0.65$ & $+4.31$ & $+0.68$ \\
-    6.0 & 49.40 & 42.61 & $+0.00$ & $+1.02$ & $+5.30$ & $+0.46$ \\
-    6.5 & 47.43 & 42.62 & $+0.00$ & $-1.72$ & $+6.07$ & $+0.47$ \\
-    7.0 & 45.81 & 42.62 & $+0.00$ & $-3.70$ & $+6.72$ & $+0.17$ \\
-    7.5 & 44.59 & 42.63 & $+0.00$ & $-5.13$ & $+7.19$ & $-0.09$ \\
-    8.0 & 43.87 & 42.64 & $+0.00$ & $-6.22$ & $+7.89$ & $-0.43$ \\
-    8.5 & 43.27 & 42.63 & $+0.00$ & $-7.17$ & $+8.42$ & $-0.61$ \\
-    9.0 & 42.79 & 42.63 & $+0.00$ & $-7.78$ & $+8.81$ & $-0.88$ \\
-    \midrule
-    \multicolumn{7}{l}{\textbf{分岐での速度抑制なし，青コース}} \\
-    4.0 & 65.28 & 42.62 & $+21.29$ & $+0.00$ & $+0.14$ & $+1.22$ \\
-    4.5 & 58.30 & 42.61 & $+14.19$ & $+0.08$ & $+0.36$ & $+1.06$ \\
-    5.0 & 52.80 & 42.63 & $+8.51$ & $+0.33$ & $+0.48$ & $+0.86$ \\
-    5.5 & 48.42 & 42.60 & $+3.86$ & $+0.61$ & $+0.66$ & $+0.69$ \\
-    6.0 & 45.14 & 42.62 & $+0.00$ & $+1.02$ & $+0.94$ & $+0.57$ \\
-    6.5 & 42.52 & 42.61 & $+0.00$ & $-1.72$ & $+1.27$ & $+0.36$ \\
-    7.0 & 40.83 & 42.61 & $+0.00$ & $-3.68$ & $+1.60$ & $+0.29$ \\
-    7.5 & 39.19 & 42.64 & $+0.00$ & $-5.11$ & $+2.20$ & $-0.53$ \\
-    8.0 & 38.40 & 42.63 & $+0.00$ & $-6.19$ & $+2.81$ & $-0.85$ \\
-    8.5 & 37.64 & 42.64 & $+0.00$ & $-7.05$ & $+3.35$ & $-1.30$ \\
-    9.0 & 37.15 & 42.67 & $+0.00$ & $-7.48$ & $+3.65$ & $-1.68$ \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{信号停止を含まないため$\Delta T_{\mathrm{stop}}$は0である．4.0，5.5，7.0\,m/sの行はTable~\ref{tab:decomp_sil}と同じ走行である．6.5\,m/s以上は参考値であり，$\Delta T_{\mathrm{plan}}$の負の値は上限速度の設定値が走行可能な最高速度6.0\,m/sを超える分である．}
-\end{table}
-
-\begin{figure}[!htbp]
-  \centering
-  \includegraphics[width=0.98\textwidth]{images/sil_sweep_decomp.png}
-  \caption[Breakdown terms versus the upper speed limit.]{Terms of the second-lap breakdown versus the upper speed limit for the baseline on the red and blue courses and for the blue course without the branch speed limit (mean of completed runs, 5 seeds). Above 6.0\,m/s (shaded), $\Delta T_{\mathrm{cap}}$ is zero and $\Delta T_{\mathrm{plan}}$ is negative because the upper speed limit exceeds the maximum speed of the physical limit.}
-  \label{fig:sil_sweep_decomp}
-\end{figure}
-
-Table~\ref{tab:stop_sweep}とFig.~\ref{fig:sil_sweep_stop}に信号停止の結果を示す．4条件とも9.5\,m/sまで全試行が停止した．停止の失敗が最初に現れたのは，実測の距離誤差ありの10.0\,m/sで，基準と停止専用の減速度なしの各1/5である．この2本は停止線を4.2，5.0\,m/sで通過し，停止線の2.4，3.2\,m先（コーンの手前0.9，0.1\,m）で最低速度0.13，0.56\,m/sまで減速したが，0.05\,m/s未満には達しなかった．距離誤差なしでは10.0\,m/sまで全試行が停止した．行き過ぎの平均は，実測の距離誤差ありでは6.0\,m/sまで$+0.7$〜$+0.9$\,mでほぼ一定であり，6.5\,m/sから減って7.5\,m/s以上では両条件とも負（停止線の手前で停止）になる．この向きの変化の原因は切り分けていない．停止専用の減速度の有無による平均の差は0.7\,m以内（6.0\,m/s以下では0.4\,m以内）であり，停止の失敗が現れる速度も同じである．すなわち，信号停止で制約が現れる速度は，停止専用の減速度の有無によらず，実測の距離誤差ありで10.0\,m/sである．
-
-\begin{table}[!htbp]
-  \centering
-  \caption[Signal stop versus the upper speed limit.]{Signal stop on the red course versus the upper speed limit in 0.5\,m/s steps (5 seeds): stop overshoot (mean (range), positive beyond the true stop line). All runs stopped except where marked.}
-  \label{tab:stop_sweep}
-  \scriptsize
-  \setlength{\tabcolsep}{4pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{rcccc}
-    \toprule
-    & \multicolumn{2}{c}{実測の距離誤差あり} & \multicolumn{2}{c}{距離誤差なし} \\
-    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
-    \shortstack[r]{上限速度\\{[m/s]}} & 基準 & 停止専用の減速度なし & 基準 & 停止専用の減速度なし \\
-    \midrule
-    4.0 & $+0.82$ ($+0.66$〜$+0.86$) & $+0.86$ ($+0.86$〜$+0.86$) & $+0.06$ ($+0.06$〜$+0.06$) & $-0.05$ ($-0.13$〜$+0.06$) \\
-    4.5 & $+0.74$ ($+0.66$〜$+0.86$) & $+0.86$ ($+0.86$〜$+0.86$) & $+0.03$ ($-0.13$〜$+0.06$) & $-0.25$ ($-0.33$〜$-0.13$) \\
-    5.0 & $+0.86$ ($+0.86$〜$+0.86$) & $+0.86$ ($+0.86$〜$+0.86$) & $-0.05$ ($-0.13$〜$+0.06$) & $-0.05$ ($-0.33$〜$+0.46$) \\
-    5.5 & $+0.70$ ($+0.66$〜$+0.86$) & $+0.86$ ($+0.86$〜$+0.86$) & $-0.13$ ($-0.13$〜$-0.13$) & $-0.45$ ($-0.72$〜$-0.33$) \\
-    6.0 & $+0.82$ ($+0.66$〜$+0.86$) & $+0.86$ ($+0.86$〜$+0.86$) & $-0.17$ ($-0.33$〜$-0.13$) & $-0.41$ ($-0.53$〜$+0.06$) \\
-    6.5 & $+0.50$ ($+0.26$〜$+0.66$) & $+0.42$ ($+0.26$〜$+0.66$) & $-0.33$ ($-0.53$〜$-0.13$) & $-0.61$ ($-0.72$〜$-0.53$) \\
-    7.0 & $+0.18$ ($-0.13$〜$+0.66$) & $-0.17$ ($-0.92$〜$+0.46$) & $-0.45$ ($-0.53$〜$-0.33$) & $-0.65$ ($-0.72$〜$-0.53$) \\
-    7.5 & $-0.09$ ($-0.72$〜$+0.46$) & $-0.33$ ($-0.92$〜$+0.66$) & $-0.53$ ($-0.53$〜$-0.53$) & $-0.61$ ($-0.72$〜$-0.53$) \\
-    8.0 & $-0.41$ ($-0.92$〜$+0.46$) & $-0.49$ ($-0.92$〜$-0.33$) & $-0.49$ ($-0.72$〜$-0.33$) & $-0.53$ ($-0.53$〜$-0.53$) \\
-    8.5 & $-0.69$ ($-1.12$〜$+0.06$) & $-0.53$ ($-0.72$〜$-0.33$) & $-0.69$ ($-0.92$〜$-0.53$) & $-0.01$ ($-0.53$〜$+0.66$) \\
-    9.0 & $-0.49$ ($-0.92$〜$+0.46$) & $-0.69$ ($-0.92$〜$+0.06$) & $-0.13$ ($-0.92$〜$+1.05$) & $+0.06$ ($-0.53$〜$+0.66$) \\
-    9.5 & $-0.29$ ($-0.72$〜$+0.46$) & $-0.01$ ($-0.92$〜$+1.25$) & $-0.72$ ($-0.92$〜$-0.53$) & $-0.21$ ($-0.72$〜$+0.66$) \\
-    10.0 & $-0.13$ ($-0.92$〜$+0.46$)$^{*}$ & $-0.43$ ($-0.92$〜$+0.66$)$^{*}$ & $-0.49$ ($-0.92$〜$+0.46$) & $+0.03$ ($-0.72$〜$+1.25$) \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{$^{*}$は1本が停止せず（4/5），行き過ぎは停止した4本の値である．4.0，5.5，7.0\,m/sの行はTable~\ref{tab:signal_stop}と同じ走行である．6.5\,m/s以上は参考値である．}
-\end{table}
-
-\begin{figure}[!htbp]
-  \centering
-  \includegraphics[width=0.95\textwidth]{images/sil_sweep_stop.png}
-  \caption[Stop overshoot versus the upper speed limit.]{Stop overshoot at the signal on the red course versus the upper speed limit, 4.0 to 10.0\,m/s in 0.5\,m/s steps (5 seeds; lines: mean, bands: range). Crosses mark the cells with a run that did not stop. The shaded region is above 6.0\,m/s.}
-  \label{fig:sil_sweep_stop}
-\end{figure}
-
-\subsection{上限速度の段階ごとの制約要因}
-\label{sec:stages}
-
-\begin{table}[H]
-  \centering
-  \caption[Limiting factors for each upper speed limit.]{Limiting factors of the lap time, completion, and stopping for each upper speed limit.}
-  \label{tab:bottleneck}
-  \scriptsize
-  \setlength{\tabcolsep}{4pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{1.7cm}L{4.4cm}L{6.6cm}L{2.0cm}}
-    \toprule
-    上限速度 & 実車 & シミュレーション（赤／青） & 根拠 \\
-    \midrule
-    4.0\,m/s（B1は4.5\,m/s） & R1は3周，B1は2.97周を介入なしで走行．短縮の余地の大部分は上限速度の設定値（$\Delta T_{\mathrm{cap}}$：R1 $+21.6$\,s，B1 $+14.2$\,s／周）．$\Delta T_{\mathrm{plan}}$と$\Delta T_{\mathrm{path}}$の和はR1 $-0.1$\,s，B1 $+2.2$\,s／周 & ラップ65.9／65.2\,s，5/5完走．$\Delta T_{\mathrm{cap}}$は$+21.5$／$+21.3$\,s．信号停止は5/5，行き過ぎ$+0.82$\,m & 実車・シミュレーション \\
-    5.5\,m/s & --- & ラップ47.9／52.1\,s，5/5完走．$\Delta T_{\mathrm{cap}}$は$+3.9$\,sに減り，青では分岐での速度抑制による$\Delta T_{\mathrm{path}}$（$+4.3$\,s，抑制なし$+0.7$\,s）が同程度になる．交差点カーブの最大横加速度は2.9（抑制なし3.5）\,m/s$^2$．赤の周回全体の最大横加速度は3.5\,m/s$^2$で$a_{y,\max}$を超える．信号停止は5/5，$+0.70$\,m & シミュレーション \\
-    6.0\,m/s & --- & ラップ44.0／49.3\,s（青の抑制なしは45.1\,s），5/5完走．上限速度が走行可能な最高速度6.0\,m/sに達するため$\Delta T_{\mathrm{cap}}$は0．交差点カーブの最大横加速度は2.8（抑制なし3.8）\,m/s$^2$．信号停止は未実施 & シミュレーション \\
-    7.0\,m/s & --- & ラップ38.6／45.8\,s，5/5完走．上限速度が走行可能な最高速度6.0\,m/sを超えるため$\Delta T_{\mathrm{cap}}=0$．青の$\Delta T_{\mathrm{path}}$は$+6.7$\,s（抑制なし$+1.6$\,s）．交差点カーブの最大横加速度は2.8（抑制なし4.1，最大4.4）\,m/s$^2$．青の周回全体の最大横加速度は抑制ありで最大4.9（抑制なしは最大6.0）\,m/s$^2$．信号停止は5/5，$+0.18$\,m & シミュレーション（参考値） \\
-    7.5〜9.0\,m/s & --- & ラップ36.9〜34.5／44.5〜42.7\,s，5/5完走．摩擦限界に達するシードが赤・青とも8.0\,m/sから出る（1/5．9.0\,m/sで2/5，3/5）．抑制なしの青は7.0\,m/sから．青の抑制による時間差は5.0〜5.2\,sでほぼ一定．信号停止は9.5\,m/sまで5/5，10.0\,m/sで4/5（\ref{sec:sweep}項） & シミュレーション（参考値） \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{信号停止は実測の距離誤差ありの基準の値．実車の$\Delta T$は1周あたりの値（Table~\ref{tab:decomp}）．}
-\end{table}
-
-上限速度4.0\,m/s（B1は4.5\,m/s）では，短縮の余地の大部分は上限速度の設定値にある．シミュレーションの予測では，上限速度の設定値を5.5\,m/sに上げるだけで赤コースのラップタイムは約18\,s短くなるが，周回全体の最大横加速度は速度計画の横加速度の上限$a_{y,\max}$を超える（摩擦限界の内側である，Table~\ref{tab:horizon6}）．5.5\,m/sでは，$\Delta T_{\mathrm{cap}}$が減る一方，青コースでは分岐での速度抑制による$\Delta T_{\mathrm{path}}$が同程度の大きさになる．青コースでは6.0\,m/s以上で$\Delta T_{\mathrm{cap}}$が0になり，分岐での速度抑制が主な時間差になる（Table~\ref{tab:bottleneck}）．7.0\,m/sは参考値であるが，内訳では青コースの抑制による$\Delta T_{\mathrm{path}}$（$+6.7$\,s）が最大の項になる．7.5\,m/s以上（参考値）では，上限速度0.5\,m/sあたりのラップタイムの短縮量が1\,s以下になる一方，摩擦限界に達するシードが基準でも8.0\,m/sから出る．完走の失敗は9.0\,m/sまで現れず，停止の失敗は10.0\,m/sで現れる（\ref{sec:sweep}項）．
-
-\subsection{条件式との照合}
-\label{sec:threshold_check}
-制約が切り替わる速度は，\ref{sec:limit_method}節の条件式で見積もる．$\tau$は，認識から指令までの遅延の平均（Table~\ref{tab:ident_lap}）と並進速度の時定数（むだ時間は同定できない，Table~\ref{tab:ident}）の和0.28\,sとする．停止ではコーンの検出から指令までの遅延を計測していないため，認識から指令までの遅延で代用している．停止点までの距離$d$には，報告距離に基づく停止点の初回発行距離6.8\,m（Table~\ref{tab:signal_stop}）と，実距離に基づく距離14.4\,m（連続検出の開始距離（実距離）から停止点の位置を引いた値）を与える．停止できる上限速度（\eqnref{eq:stop_vstar}）は，$b=1.5$\,m/s$^2$（速度計画の停止専用の減速度）では，報告距離で4.1\,m/s，実距離で6.2\,m/sである．$b=4.0$\,m/s$^2$（停止専用の減速度の上限）では，それぞれ6.3\,m/s，9.7\,m/sである．報告距離による初回の見積もりは7.0\,m/sに足りないが，停止点は毎フレーム更新され，報告距離は近づくにつれて実距離に近づく（Table~\ref{tab:range}）．実距離では，停止専用の減速度が上限まで強められれば7.0\,m/sでも停止できるが，強められなければ6.2\,m/sまでである．シミュレーションでは，実測の距離誤差ありで9.5\,m/sまで5/5が停止し，10.0\,m/sで停止の失敗が現れた（\ref{sec:sweep}項）．これは，実距離で$b=4.0$\,m/s$^2$とした見積もり9.7\,m/sと一致し，報告距離による見積もり（6.3\,m/s）は低すぎる．停止専用の減速度なし（減速度3.0\,m/s$^2$）の見積もりは実距離で8.5\,m/sであるが，シミュレーションでは9.5\,m/sまで停止し（行き過ぎの最大$+1.25$\,m），失敗は基準と同じ10.0\,m/sで現れた．
-
-カーブの先読みの上限速度（\eqnref{eq:look_vstar}）は，Table~\ref{tab:thresholds}の注の値を与えると，認識距離5，6，9\,mに対して交差点カーブで5.8，6.3，7.4\,m/sである．分岐カーブでもほぼ同じ（5.9，6.3，7.5\,m/s）である．シミュレーションで，分岐での速度抑制なしの両カーブの最大横加速度の平均が$a_{y,\max}$を超え始めるのは4.5\,m/sである（Table~\ref{tab:branch_ay}）．ただし交差点カーブは4.0\,m/sでも$a_{y,\max}$に近く，4.5\,m/sでの超過もわずかであるため，超え始める速度は$\pm 0.5$\,m/s程度の不確かさを伴う．条件式の見積もり（5.8〜7.5\,m/s）は，シミュレーションで超過が始まる4.5\,m/sより高い．この差の原因は，先端の雑音により実効的な認識距離が短くなる可能性（Table~\ref{tab:patherr}）などが考えられるが，切り分けていない．また，条件式が予測する認識距離への依存は，カーブで認識距離を6\,mに短縮しても結果が変わらなかったこと（Table~\ref{tab:horizon6}）から，シミュレーションでは再現されなかった．ただし，この条件（6/9\,m切替）は，カーブが前方に入ったフレームだけ認識距離を縮めるものであり，認識距離を一定に短くした条件は走行させていない．
-
-摩擦限界については，速度計画が$a_{y,\max}$で計画する限り，横加速度は摩擦限界に達しない．摩擦限界を超えうるのは，経路の曲率が走行曲率より小さく見積もられ，その比が$a_\mu/a_{y,\max}=2.0$を超える場合（\eqnref{eq:fric_ratio}）と，先読みの要求（\eqnref{eq:look_req}）を満たさず，計画を超える速度でカーブに進入する場合である．\ref{chap:field}章の内訳では，曲率の過小評価を示す負の$\Delta T_{\mathrm{path}}$は，R1のわずかな値（1周あたり$-0.1$\,s）にとどまる．シミュレーションで摩擦限界に達するシードが最初に出るのは，分岐での速度抑制なしの7.0\,m/s（周回全体．両カーブ以外の区間）と交差点カーブの7.5\,m/s（参考値）で，後者に当たる．抑制ありの基準では，青コースの7.0\,m/sでも周回全体の最大横加速度は摩擦限界に達せず（Table~\ref{tab:horizon6}），赤・青とも8.0\,m/sから達するシードが出る（\ref{sec:sweep}項）．ただし，理想的な経路生成では9.0\,m/sでも達しないことから，基準の到達は曲率の過小評価や先読みの不足ではなく，経路生成の雑音に経路追従制御が応答することで生じており，条件式が想定する2つの場合のいずれにも当たらない．舵角については，半径4.6\,mのカーブに必要な舵角（\eqnref{eq:steer_req}の左辺）は9.1$^\circ$で，制限の15$^\circ$より小さく，定常では制約にならない．
-
-\begin{table}[H]
-  \centering
-  \caption[Estimated switching speeds compared with the simulation.]{Speed-dependent requirements, fixed capabilities, and the estimated switching speeds $v^*$ compared with the simulation.}
-  \label{tab:thresholds}
-  \scriptsize
-  \setlength{\tabcolsep}{4pt}
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{1.4cm}L{2.8cm}L{3.0cm}L{3.2cm}L{4.2cm}}
-    \toprule
-    制約 & 速度に依存する要求 & 固定された能力 & $v^*$ [m/s] & シミュレーションとの照合 \\
-    \midrule
-    停止 & 必要な停止距離（\eqnref{eq:stop_req}） & 停止点までの距離$d$：6.8\,m（報告距離），14.4\,m（実距離） & $b=1.5$：4.1，6.2．$b=4.0$：6.3，9.7 & 9.5\,m/sまで5/5が停止，10.0\,m/sで4/5（実距離で$b=4.0$の見積もり9.7\,m/sと一致．報告距離の見積もりは低すぎる） \\
-    先読み & カーブ進入までの減速距離（\eqnref{eq:look_req}） & 認識距離5，6，9\,m & 交差点：5.8，6.3，7.4．分岐：5.9，6.3，7.5 & 抑制なしで横加速度が$a_{y,\max}$を超え始めるのは交差点，分岐とも4.5\,m/s（$\pm 0.5$\,m/s程度の不確かさ）．認識距離を6\,mに短縮しても変化なし \\
-    摩擦限界 & カーブの横加速度（\eqnref{eq:fric_req}） & 摩擦限界$a_\mu$：6.0\,m/s$^2$ & $\kappa_{\mathrm{run}}/\kappa_{\mathrm{path}}>2.0$か先読みの不足がない限り超えない & 抑制なしは7.0\,m/s（周回全体），交差点カーブは7.5\,m/sから到達するシードが出る．基準は赤・青とも8.0\,m/sから（各1/5）．理想的な経路生成は9.0\,m/sでも達しない（いずれも参考値） \\
-    舵角 & 定常旋回の必要舵角（\eqnref{eq:steer_req}） & 舵角の制限15$^\circ$ & 半径4.6\,mで9.1$^\circ$（制約にならない） & --- \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{$\tau=0.28$\,s（停止ではコーンの検出から指令までの遅延の代用），先読みは$a_{y,\max}=3.0$\,m/s$^2$，$b=3.0$\,m/s$^2$とした．交差点カーブは半径4.6\,m（$v_c=3.7$\,m/s），分岐カーブは半径4.9\,m（$v_c=3.8$\,m/s）である．6.0\,m/sを超える速度は，試験で到達を確認した最高速度（Table~\ref{tab:phys}）を超える参考値である．}
-\end{table}
+揺らぎの大きさを1.5倍にすると，$\Delta T_{\mathrm{track}}$は青で$+0.29$\,sから$-0.35$\,s（10試行すべてが負），赤で$+0.44$\,sから$-0.11$\,sに変わる．参照速度の変動（参照点の計画速度の1\,s移動平均からのずれの二乗平均平方根）は，青で0.226から0.346\,m/sに増え，実車（0.296，0.303\,m/s）と同程度になる．しかし，$\Delta T_{\mathrm{track}}$の大きさは実車（$-2.04$，$-2.62$\,s）の1/6〜1/8，横加速度が2.0\,m/s$^2$を超える時間は3.3\,s/周のまま（実車10.3，6.7\,s/周）である．揺らぎの大きさだけでは，実車の速度の追従は再現しない．
 
 \section{考察}
 \label{sec:discussion}
-上限速度4.0\,m/sで要素の置換や除去がラップタイムに現れなかったのは，速度計画が青コースの交差点カーブと分岐カーブ（半径約4.6〜4.9\,m）に与えるカーブ速度（$a_{y,\max}=3.0$\,m/s$^2$で3.7〜3.8\,m/s）がこの上限速度とほぼ同じであり，それ以外の区間では上限速度の設定値が速度を決めるためである．経路生成の誤差や追従の差は，この速度域では速度に影響せず，横偏差にだけ現れる．実車のR1とB1の内訳（\ref{chap:field}章）で$\Delta T_{\mathrm{plan}}$と$\Delta T_{\mathrm{path}}$が小さかったことも，同じ理由で説明できる．したがって，この速度域でラップタイムを縮める最初の手段は，認識や制御の改良ではなく，上限速度の設定値を上げることである．ただし，5.0〜5.5\,m/sでは周回全体の最大横加速度が$a_{y,\max}$を超える（Table~\ref{tab:horizon6}）ため，上限速度を上げるには，本研究で仮定値とした車両の横加速度の限界を試験で確かめる必要がある．この超過は，理想的な経路生成では生じないことから，経路生成の雑音に由来する（\ref{sec:sweep}項）．
+上限速度6.0\,m/s以下の範囲で，実車（\ref{chap:field}章）とシミュレーションの結果は，研究目的に対して次の点を示す．
 
-上限速度を上げたときに要素の寄与が現れる順序は，完走を左右する局所経路計画の合流距離，次いで青コースの分岐での速度抑制である．合流距離については，実効距離が長いほど最大横偏差が大きく，約12\,m以上で完走が減った．合流距離が長いと横偏差の修正に時間がかかり，毎周期の再計画で経路生成の揺らぎが横方向の外乱として入るのに修正が追いつかないためと考えられる．ただし，雑音のない真値の点を遠方に加えても完走しなかったことから，参照経路の遠方の雑音だけでは説明できず，機構は特定できていない．分岐での速度抑制については，6.0\,m/s以上で$\Delta T_{\mathrm{cap}}$が0になると最大の時間差になる一方，シミュレーションでは抑制なしでも9.0\,m/sまで完走し，交差点カーブの横加速度は4.5\,m/sから$a_{y,\max}$を超えるものの，摩擦限界に達するシードが出るのは7.5\,m/s以上であった．したがって，抑制値（4.0\,m/s）は安全側に大きく取られており，横加速度の限界を確かめたうえで抑制値を上げるか，分岐の経路の曲率を得てから減速する方式に置き換えることで，青コースのラップタイムをさらに縮められる可能性がある．
+第一に，シミュレーションは，同定に用いていない実車9本に対して，上限速度を変えたときのラップタイムの変化を0.6\,s以内で与える．ラップタイムの絶対値の一致は，周長が短い分と$\Delta T_{\mathrm{track}}$が大きい分の打ち消しを含むが，条件間の差ではその偏りが消える（\ref{sec:sil_validity}節）．
 
-上限速度を0.5\,m/s刻みで9.0\,m/sまで上げた掃引では，基準は全速度で完走し，完走の失敗は現れなかった．最初に現れる制約は，摩擦限界への到達（基準で8.0\,m/s，抑制なしで7.0\,m/s）と信号停止の失敗（10.0\,m/s）であり，いずれも走行可能な最高速度6.0\,m/sを超える参考値である．この範囲で横加速度を摩擦限界に近づけるのはコースの曲率ではなく経路生成の雑音であり，理想的な経路生成では9.0\,m/sでも最大横加速度が4.2\,m/s$^2$以下にとどまる．したがって，車両の限界が6.0\,m/sより高いと確かめられた場合に上限速度をさらに上げるには，経路生成の雑音を減らすこと（平滑化や時間方向のフィルタ）か，雑音への応答が小さい追従制御が必要になる．Pure Pursuit法は最悪値5.4\,m/s$^2$で摩擦限界に達しないが，その代わりに最大横偏差が1.3\,mまで増える．また，分岐での速度抑制の時間差は6.0\,m/s以上で約5\,s／周に飽和するため，青コースで上限速度を上げたときの短縮量は赤コースより小さい（7.0から9.0\,m/sで赤4.1\,s，青3.1\,s）．
+第二に，上限速度を上げたときに増える時間差の大部分は，速度計画の設定値による．上限速度を4.0から6.0\,m/sに上げたときに増える時間差は，シミュレーションの青コースで$\Delta T_{\mathrm{plan}}+\Delta T_{\mathrm{branch}}$の$+6.54$\,s（実車$+6.10$\,s）が大部分を占め，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$は$+0.65$\,s（実車$+0.14$\,s）である．設定値を変えると，青の6.0\,m/sでは，$a_{y,\max}$を3.0\,m/s$^2$にすると2.75\,s，分岐での速度抑制を外すと3.10\,s短くなる．ただし，$a_{y,\max}$を上げると$\Delta T_{\mathrm{branch}}$が1.27\,s増えるため，二つの短縮は足し合わせられない．この短縮は，$\Delta T_{\mathrm{plan}}$の変化に，$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$，$\Delta T_{\mathrm{branch}}$，$\Delta T_{\mathrm{track}}$の1〜2\,s規模の変化が打ち消し合って加わった結果であり，見積もりとの差は青4.0\,m/sで0.49\,s（短縮の約半分）である．実車の横加速度は，上限2.0\,m/s$^2$でも最大3.4\,m/s$^2$に達し，舵角の制限の横加速度3.0\,m/s$^2$の約1.1倍であるため，設定値を緩めた副作用は実車の結果による（\ref{sec:ay_result}節）．
 
-経路追従制御の寄与が，周回走行ではラップタイムに現れず横偏差に現れ，信号停止ではMPCの停止時間の増加として現れたことは，追従制御の選択を周回のラップタイムだけでは評価できないことを示す．MPCの停止時間が長い原因としては，停止線へ低速のまま接近することが考えられ，停止を含む走行の評価には，停止への接近の挙動を別に見る必要がある．
+第三に，経路生成の揺らぎは，ラップタイムを0.6〜0.9\,s程度しか変えない．揺らぎだけをなくすと，ラップタイムは6.0\,m/sで0.6\,s短くなり，揺らぎを1.5倍にすると0.5〜0.9\,s長くなる．車線中心の真値を平滑化せずに与えると，計画された速度が下がり（$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}$が青で$+1.21$〜$+1.97$\,s），ラップタイムは青で0.73〜0.92\,s長くなる．標準構成の参照経路は，真の車線中心を与えた場合より計画速度が高く，横加速度の超過が多い．合流距離を15\,mに固定した条件（比較のために設けた条件）では，このシミュレーションの青コースの完走が，上限速度5.0，6.0\,m/sで10/30まで下がる．Pure Pursuit法の条件はラップタイムが短いが，横偏差と横加速度の超過の増加を伴い，この大きさをシミュレーションが再現しないため，実車の短縮とは読まない．Kabzanら\cite{kabzan2020}は，認識から指令までの約300\,msの遅延が最大のボトルネックの一つであり，速度に上限をかけざるを得なかったと述べている．本研究の認識から指令までの遅延は平均約0.07\,sであり，撮影から経路生成の出力までの遅延を2倍にしても，ラップタイムの差は0.59\,s以下である．
 
-条件式の見積もりは，停止については，実距離と停止専用の減速度の上限を与えた場合にシミュレーションと矛盾しなかったが，先読みについては，シミュレーションで横加速度が$a_{y,\max}$を超え始める4.5\,m/sより高い5.8〜7.5\,m/sを与え，認識距離への依存も再現されなかった．条件式は認識距離を一定とし，速度の応答を時定数だけで表すため，先端の雑音による実効的な認識距離の短縮や，速度計画と制御の周期による遅れを含まない．この差は，条件式が制約の見積もりとしては楽観的であることを示しており，上限速度を決めるときは，条件式を目安として使い，シミュレーションで確認する必要がある．また，摩擦限界への到達は，条件式が想定する曲率の過小評価や先読みの不足ではなく，経路生成の雑音への追従の応答で生じており，条件式には含まれていない．
-
-関連研究との関係では，Kabzanら\cite{kabzan2020}が認識から指令までの遅延を速度の制約として挙げたのに対し，本研究の速度域でラップタイムの大部分を決めたのは，運用側が与えた上限速度の設定値と分岐での速度抑制であり，認識の誤差（理想的な経路生成との差はラップタイムの約1\,\%）ではなかった．この結果は，カメラのみで走行するシステムでも，速度域によっては，認識精度の改良より，上限速度の設定とその根拠になる車両の限界の確認が先であることを示す．
-
-実車との比較は2本（R1，B1）のラップタイムと内訳に限られ，信号停止の行き過ぎの符号は再現せず，横偏差は基準が異なるため相対的な比較としてのみ読める．本章の結果の適用範囲は，次節に述べる．
-
-\section{本研究の限界}
-\label{sec:limitations}
-本研究の結果の適用範囲は，次の点で限られる．
-\begin{enumerate}
-  \item 実車の走行は，1台の車両で行った赤コースのR1と青コースのB1の2本だけである．コース，上限速度，追従制御，分岐での速度抑制が異なる1本ずつの走行であり，要素どうしの比較は実車の結果だけからは述べられない．シミュレーションの妥当性は，この2本との比較に基づく．経路生成の誤差と検出のモデルは同じ2本から求めているため，同定に用いていない走行での検証は行っていない．基準構成（MPC）には赤コースの実車走行がなく，MPCと信号停止の組合せも実車で確認していない．
-  \item 車両応答は，舗装路での手動操縦の走行試験（6本）で同定した．並進速度のむだ時間は同定できず，シミュレーションでは0.05\,sを仮定した．操舵の応答は，直進でも右へ回る偏りを含めた当てはめであり，偏りの原因は特定していない．操舵のゲインは，周回走行の閉ループのデータに当てはめた値の方が，走行試験の値より約10\,\%大きい．
-  \item 走行可能な最高速度は試験で到達を確認した6.0\,m/sを用い，横加速度の上限は仮定値である．これを超える上限速度の結果は参考値である．$T_{\mathrm{phys}}$と$\Delta T_{\mathrm{cap}}$の配分と，7.0\,m/sの結果は，これらの値により変わりうる．
-  \item 上限速度の掃引で現れた制約（摩擦限界への到達8.0\,m/s，停止の失敗10.0\,m/s）は，いずれも6.0\,m/sを超える参考値であり，摩擦限界への到達は横加速度を6.0\,m/s$^2$で飽和させる車両モデルの仮定に依存する．完走の失敗は9.0\,m/sまで現れなかったが，それより高い上限速度は走行させていない．
-  \item 横偏差は，シミュレーションでは車線中心の真値に，実車では参照経路に対して求めるため基準が異なり，R1では実車より大きく，B1では小さかった．横偏差は相対的な比較としてのみ読み，横偏差の閾値に依存する完走の判定（例えば，最大横偏差が閾値に近い赤コースの合流距離15\,m固定）は，モデルの不確かさの影響を受ける．
-  \item 要素別の比較は各条件5シードであり，完走率の差として区別できるのは0/5と5/5の組だけである．中間の完走率（赤コースの合流距離15\,m固定など）の差は区別できない．また，Bonferroniの補正は参考値であり，信頼区間と検定にモデルの不確かさは含まない．
-  \item 検出モデルは，R1の3回の接近の計測に基づく．検出の距離誤差の比は3回の接近の同一物体で計測しており，$d_0$の実車でのばらつきと，停止点の発行の途切れは再現していない．信号停止の行き過ぎの符号も，実車と一致しない．
-  \item 合流距離の失敗の機構は特定できていない．実効距離を変えた走行は赤コースのMPCの4.0と5.5\,m/sだけで行い，青コースでは行っていない．参照経路を制限した条件の実効距離は，別に記録した経路から求めた値である．
-  \item R1相当の構成でMPCの3周の完走が4/5となった原因は調べていない．
-  \item 理想的な経路生成の青コースで，最大横偏差が基準より大きくなった原因は調べていない．
-  \item 認識距離の影響は，カーブが前方6\,m以内に入ったフレームだけ認識距離を縮める条件（6/9\,m切替）でしか調べておらず，条件式が予測する認識距離への依存の検証は限られる．
-  \item 障害物回避は評価していない．シミュレーションの自己位置は真値であり，ドリフトを含まない．経路生成のモデルは揺らぎだけを含み，系統誤差を含まない．
-\end{enumerate}
+第四に，シミュレーションを用いる範囲は，信号停止を含まない周回のラップタイムの変化である．速度の追従の細部（減速しきれずにカーブへ入る現象，$\Delta T_{\mathrm{track}}$の符号），横加速度の超過，横偏差の大きさ，信号停止の低速接近は再現しない（\ref{sec:sil_validity}節）．これらは揺らぎの大きさや並進速度の応答を変えても再現せず（\ref{sec:sil_sens}節），実車の結果による．経路生成と速度の追従の影響は，時間差ではなく，横加速度の超過と分岐での経路の切替の遅れとして現れ（\ref{chap:field}章），速度計画の設定値は，これらに対する余裕として働いている．完走数は，このシミュレーションの条件の中での条件間の比較であり，実車の完走を見積もるものではない．

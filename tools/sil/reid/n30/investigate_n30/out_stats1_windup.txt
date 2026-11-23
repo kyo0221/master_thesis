@@ -1,0 +1,4 @@
+mpc 1 mean(vref-vm) during approach +0.24 m/s | integral +1.25 m | reported/true distance at 1st publish 0.47, mean over first 2 s 0.54
+mpc 0 mean(vref-vm) during approach -0.10 m/s | integral -0.40 m | reported/true distance at 1st publish 0.99, mean over first 2 s 0.99
+pp 1 mean(vref-vm) during approach -0.14 m/s | integral -0.65 m | reported/true distance at 1st publish 0.47, mean over first 2 s 0.54
+pp 0 mean(vref-vm) during approach -0.16 m/s | integral -0.62 m | reported/true distance at 1st publish 0.99, mean over first 2 s 1.00

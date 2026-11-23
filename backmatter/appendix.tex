@@ -5,49 +5,317 @@
 \setcounter{figure}{0}
 \renewcommand{\thefigure}{A.\arabic{figure}}
 
-\section*{A.1 実車走行の記録項目}
-実車走行で記録したトピックの一覧をTable~\ref{tab:topics}に示す．レートは，走行R1（赤コース，上限速度4\,m/s）の記録（記録時間235.0\,s）のメッセージ数を記録時間で割った値であり，周期的でないトピックは記録した件数を示す．\nolinkurl{/planning/nav_cmd}は経路選択の指示（std\_msgs/msg/String）であり，青コースで出力される．
+\section*{A.1 R1とB1の内訳}
+\addcontentsline{toc}{section}{A.1 R1とB1の内訳}
+\label{sec:app_r1b1}
+R1とB1は，設定の異なる以前の走行である．Table~\ref{tab:decomp}に，2周目の内訳を，9本と同じ定義（Table~\ref{tab:decomp_all}）で示す．確認性能は\ref{chap:field}章のTable~\ref{tab:phys}の値，速度計画の設定値はTable~\ref{tab:params}の値（$a_{y,\max}=3.0$\,m/s$^2$）とした．R1は赤コースの上限速度4.0\,m/sの走行（Pure Pursuit法）で，信号停止の時間が大半を占める．B1は青コースの上限速度4.5\,m/sの走行（MPC）で，$\Delta T_{\mathrm{path}}$の2.2\,sのうち1.1\,sが分岐での速度抑制である．
 
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
-  \caption{Recorded topics.}
-  \label{tab:topics}
-  \scriptsize
-  \begin{tabular}{p{3.9cm}p{4.4cm}p{2.0cm}p{3.9cm}}
+  \caption{Breakdown of the lap time of the second lap in R1 and B1 (signed, in seconds).}
+  \label{tab:decomp}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{lrrrrrrrrrr}
     \toprule
-    トピック & 型 & レート & 用途 \\
+    & & & \multicolumn{5}{c}{計画された速度から計算} & \multicolumn{2}{c}{実測に依存} & \\
+    \cmidrule(lr){4-8}\cmidrule(lr){9-10}
+    走行 & \shortstack[r]{$v_{\mathrm{cap}}$\\{[m/s]}} & $T_{\mathrm{lap}}$ & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{cap}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{branch}}$ & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\$-\Delta T_{\mathrm{branch}}$} & $\Delta T_{\mathrm{track}}$ & $\Delta T_{\mathrm{stop}}$ & \shortstack[r]{経路・\\追従の和} \\
     \midrule
-    \multicolumn{4}{l}{\textbf{センサと検出}} \\
-    \nolinkurl{/zed/zed_node/rgb/image_rect_color} & \nolinkurl{sensor_msgs/msg/Image} & 約15\,Hz & 経路生成，信号・障害物の検出の入力，再推論 \\
-    \nolinkurl{/zed/zed_node/rgb/camera_info} & \nolinkurl{sensor_msgs/msg/CameraInfo} & 約15\,Hz & 画像上の経路点の車両座標系への投影 \\
-    \nolinkurl{/perception/objects} & \nolinkurl{object_detection_msgs/msg/ObjectInfoArray} & 約15\,Hz & 信号パネルとコーンの検出結果 \\
-    \nolinkurl{/vectornav/imu} & \nolinkurl{sensor_msgs/msg/Imu} & 約20\,Hz & 角速度，加速度，姿勢（ヨーレートから曲率を求める） \\
-    \nolinkurl{/vectornav/velocity_body} & \nolinkurl{geometry_msgs/msg/TwistWithCovarianceStamped} & 約20\,Hz & 慣性航法装置の速度 \\
-    \nolinkurl{/vectornav/pose} & \nolinkurl{geometry_msgs/msg/PoseWithCovarianceStamped} & 約20\,Hz & 慣性航法装置の位置と姿勢 \\
-    \nolinkurl{/vectornav/gnss} & \nolinkurl{sensor_msgs/msg/NavSatFix} & 約20\,Hz & 評価用の参照位置（ラップタイム，軌跡） \\
-    \nolinkurl{/joy} & \nolinkurl{sensor_msgs/msg/Joy} & 約11\,Hz & ジョイスティック入力（介入の検出） \\
-    \multicolumn{4}{l}{\textbf{経路・計画・指令}} \\
-    \nolinkurl{/planner/vision_path} & \nolinkurl{nav_msgs/msg/Path} & 約15\,Hz & 経路生成の出力 \\
-    \nolinkurl{/planner/global_path} & \nolinkurl{nav_msgs/msg/Path} & 約15\,Hz & 参照経路（平滑化後の経路） \\
-    \nolinkurl{/planner/local_path} & \nolinkurl{nav_msgs/msg/Path} & 約10\,Hz & 局所経路（局所経路計画の出力） \\
-    \nolinkurl{/planner/speed_path} & \nolinkurl{speed_path_msgs/msg/SpeedPath} & 約10\,Hz & 速度計画の出力（経路点と速度列） \\
-    \nolinkurl{/planning/stop_point} & \nolinkurl{speed_path_msgs/msg/StopPoint} & 340件（事象） & 信号・障害物に対する停止点 \\
-    \nolinkurl{/cmd_vel} & \nolinkurl{steered_drive_msg/msg/SteeredDrive} & 約20\,Hz & 並進速度と舵角の指令値 \\
-    \nolinkurl{/autonomous} & \nolinkurl{std_msgs/msg/Bool} & 2件（事象） & 自律走行の開始と解除 \\
-    \multicolumn{4}{l}{\textbf{自己位置と座標変換}} \\
-    \nolinkurl{/localization/odom} & \nolinkurl{nav_msgs/msg/Odometry} & 約49\,Hz & 自己位置推定（オドメトリ） \\
-    \nolinkurl{/tf} & \nolinkurl{tf2_msgs/msg/TFMessage} & 約45\,Hz & 座標変換 \\
-    \nolinkurl{/tf_static} & \nolinkurl{tf2_msgs/msg/TFMessage} & 1件 & 固定の座標変換 \\
-    \multicolumn{4}{l}{\textbf{車体制御系}} \\
-    \nolinkurl{/chassis/velocity_body} & \nolinkurl{geometry_msgs/msg/TwistWithCovarianceStamped} & 約460\,Hz & 駆動輪の回転速度から求めた並進速度 \\
-    \nolinkurl{/can_rx_711} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 約460\,Hz & 駆動輪の回転速度 \\
-    \nolinkurl{/can_rx_012} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 100\,Hz & 従動輪エンコーダ（舵角） \\
-    \nolinkurl{/caster_data} & \nolinkurl{std_msgs/msg/Float64MultiArray} & 約470\,Hz & 従動輪の目標舵角，実測舵角，回転位置 \\
-    \nolinkurl{/can_tx} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 約1.4\,kHz & 駆動輪の回転速度の指令などの送信フレーム \\
-    \nolinkurl{/odrive_axis0/control_message} & \nolinkurl{odrive_can/msg/ControlMessage} & 約470\,Hz & 従動輪のばねプリロード機構への位置指令 \\
-    \nolinkurl{/can_rx_309} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 100\,Hz & プリロード機構の位置推定 \\
-    \nolinkurl{/can_rx_301} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 10\,Hz & プリロード機構の軸状態 \\
-    \nolinkurl{/can_rx_712} & \nolinkurl{socketcan_interface_msg/msg/SocketcanIF} & 10\,Hz & 非常停止の状態 \\
+    R1 & 4.0 & 77.3 & 43.3 & $+21.7$ & 0.0 & 0.0 & 0.0 & $+0.5$ & $+11.9$ & $+0.5$ \\
+    B1 & 4.5 & 59.7 & 43.3 & $+14.0$ & $+0.2$ & $+1.1$ & $+1.2$ & 0.0 & 0.0 & $+1.2$ \\
     \bottomrule
-  \end{tabular}
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{各項の和は\eqnref{eq:decomp}により$T_{\mathrm{lap}}$に一致する．R1の1周あたりの平均は，$T_{\mathrm{lap}}$ 73.0\,s，$\Delta T_{\mathrm{stop}}$ 7.4\,sであり，周ごとに信号の表示時間で変わる．}
+\end{table}
+
+\section*{A.2 上限速度を変えた9本の周ごとの内訳}
+\addcontentsline{toc}{section}{A.2 上限速度を変えた9本の周ごとの内訳}
+\label{sec:app_laps_1119}
+Table~\ref{tab:decomp_laps_1119}に，上限速度を変えた9本の完全な周ごとの内訳を示す．走行距離は車輪速の積算である．
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Breakdown of the lap time of each complete lap in the nine runs (signed, in seconds).}
+  \label{tab:decomp_laps_1119}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{lrrrrrrrrrr}
+    \toprule
+    走行 & 周 & \shortstack[r]{距離\\{[m]}} & $T_{\mathrm{lap}}$ & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{cap}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{branch}}$ & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\$-\Delta T_{\mathrm{branch}}$} & $\Delta T_{\mathrm{track}}$ & $\Delta T_{\mathrm{stop}}$ \\
+    \midrule
+    R40 & 1 & 261.1 & 77.5 & 44.3 & $+21.5$ & $+0.2$ & 0.0 & $-0.3$ & $+0.7$ & $+11.1$ \\
+    R40 & 2 & 260.8 & 77.4 & 43.5 & $+21.7$ & 0.0 & 0.0 & $+0.1$ & $+0.4$ & $+11.8$ \\
+    R50 & 1 & 262.2 & 64.2 & 44.4 & $+8.6$ & $+0.2$ & 0.0 & $+1.1$ & $-0.4$ & $+10.2$ \\
+    R50 & 2 & 261.4 & 62.7 & 43.6 & $+8.7$ & $+0.1$ & 0.0 & $+1.1$ & $-0.7$ & $+9.8$ \\
+    R60 & 1 & 264.2 & 59.0 & 44.8 & 0.0 & $+1.4$ & 0.0 & $+3.6$ & $-1.2$ & $+10.5$ \\
+    R60 & 2 & 261.9 & 57.1 & 43.6 & 0.0 & $+1.0$ & 0.0 & $+2.3$ & $-1.7$ & $+11.7$ \\
+    R60 & 3 & 263.0 & 58.5 & 43.8 & 0.0 & $+1.1$ & 0.0 & $+2.7$ & $-1.5$ & $+12.5$ \\
+    B40a & 1 & 258.5 & 66.7 & 44.1 & $+21.1$ & $+0.7$ & 0.0 & $+0.3$ & $+0.6$ & 0.0 \\
+    B40a & 2 & 258.8 & 66.5 & 43.4 & $+21.3$ & $+0.6$ & 0.0 & $+0.9$ & $+0.3$ & 0.0 \\
+    B40b & 1 & 259.4 & 66.8 & 44.2 & $+21.1$ & $+0.6$ & $-0.1$ & $-0.1$ & $+0.6$ & $+0.4$ \\
+    B40b & 2 & 258.1 & 65.9 & 43.3 & $+21.3$ & $+0.5$ & $-0.2$ & $+0.5$ & $+0.1$ & $+0.5$ \\
+    B50a & 1 & 258.7 & 57.4 & 44.1 & $+8.3$ & $+1.8$ & $+2.3$ & $+1.3$ & $-0.3$ & 0.0 \\
+    B50a & 2 & 258.8 & 56.5 & 43.3 & $+8.4$ & $+1.5$ & $+2.0$ & $+1.6$ & $-0.3$ & 0.0 \\
+    B50b & 1 & 259.8 & 57.5 & 44.3 & $+8.3$ & $+1.9$ & $+2.0$ & $+1.5$ & $-0.5$ & 0.0 \\
+    B50b & 2 & 259.0 & 56.8 & 43.5 & $+8.3$ & $+1.8$ & $+1.9$ & $+1.7$ & $-0.4$ & 0.0 \\
+    B50b & 3 & 260.7 & 58.0 & 43.8 & $+8.4$ & $+1.9$ & $+1.9$ & $+2.4$ & $-0.4$ & 0.0 \\
+    B60a & 1 & 260.1 & 51.5 & 44.3 & 0.0 & $+3.5$ & $+3.1$ & $+1.8$ & $-1.2$ & 0.0 \\
+    B60a & 2 & 260.3 & 50.8 & 43.6 & 0.0 & $+3.8$ & $+2.9$ & $+2.5$ & $-2.0$ & 0.0 \\
+    B60a & 3 & 260.5 & 51.4 & 43.6 & 0.0 & $+3.6$ & $+2.9$ & $+3.1$ & $-1.9$ & 0.0 \\
+    B60b & 1 & 261.0 & 52.9 & 44.6 & 0.0 & $+3.3$ & $+2.5$ & $+2.8$ & $-1.6$ & $+1.4$ \\
+    B60b & 2 & 262.2 & 52.3 & 44.0 & 0.0 & $+3.3$ & $+3.1$ & $+4.1$ & $-2.6$ & $+0.4$ \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{1周目は静止発進を含む．部分周は含まない．赤の$\Delta T_{\mathrm{stop}}$は信号停止による時間差であり，R60の各周には停止点が短時間発行された区間（$-0.5$〜$+0.6$\,s）が含まれる．B40bとB60bの$\Delta T_{\mathrm{stop}}$は，信号のない青コースで停止点が短時間発行されたことによる．}
+\end{table}
+
+\section*{A.3 同定と検出の補足}
+\addcontentsline{toc}{section}{A.3 同定と検出の補足}
+\label{sec:app_ident}
+R1とB1の周回走行から同定した遅延などをTable~\ref{tab:ident_lap}に，同定の当てはめの詳細を以下に示す．
+
+走行試験Bでは，車体制御系が内部に持つ速度（\ref{sec:chassis}節）の記録が得られる．駆動輪の回転速度の指令値の記録（周期約2\,ms）を，車輪半径の設定値0.124\,mで速度に換算した値を$v_{\mathrm{int}}$と呼ぶ．$v_{\mathrm{int}}$は$v_{\mathrm{cmd}}$を加速度5.0\,m/s$^2$で勾配制限した値であり，\eqnref{eq:vmodel}の$\hat{v}_{\mathrm{cmd}}$に当たる．そこで，$v_{\mathrm{int}}$を入力として，一次遅れだけの場合と，さらに加速と減速の上限を持つ場合を，6\,sの窓に当てはめる．この入力では，$v_{\mathrm{cmd}}$から$v_{\mathrm{int}}$までの遅れ（別の事象で約0.06\,s）を含まず，$v_{\mathrm{int}}$から車輪速（記録周期2〜6\,ms）までのむだ時間と一次遅れが求まる．むだ時間は0〜0.2\,sを0.01\,s刻みで探索し，誤差が最小値の5\,\%以内に収まる範囲（許容範囲）も求める．
+
+
+線形域の応答は，指令値の変化が1.0\,m/s以下のステップに勾配制限なしのモデルを当てはめて求める．定常ゲインは，指令値が一定で車輪速が定常となった点の比から求める．加速と減速の上限は，最大指令での加速と指令値を0にした制動について，車輪速の0.2\,s窓の傾きの最大（ピーク）と，変化量の10〜90\,\%の平均の傾き（持続）でも表す．
+
+
+走行試験Bの当てはめには，$v_{\mathrm{int}}$が得られた6\,sの窓66個（39{,}600点）を用い，ヨーレートの比例係数は慣性航法装置のある2本の3{,}296点から定めた．
+
+走行試験の一覧をTable~\ref{tab:ident_runs}，\ref{tab:ident_runs_b}に，操舵の応答の同定値をTable~\ref{tab:ident2}に，走行試験Aの操舵の応答をFig.~\ref{fig:ident_step_steer}に，定常旋回の横加速度をFig.~\ref{fig:ident_lateral}に，R1とB1の経路生成の揺らぎをTable~\ref{tab:patherr}とFig.~\ref{fig:path_error}に，コーンの報告距離と実距離の関係をFig.~\ref{fig:detection_distance}とTable~\ref{tab:range}に，上限速度を変えた9本の経路生成の揺らぎをTable~\ref{tab:patherr_1119}に，青コースの指示から局所経路が切り替わるまでの時間をTable~\ref{tab:branch_switch}に，信号停止の積分項のリセットをTable~\ref{tab:reset}に示す．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Characteristics identified from the lap runs.]{Latency, wheel radius, and detection and stop characteristics from the lap runs.}
+  \label{tab:ident_lap}
+  \small
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{0.85}\begin{tabular}{L{5.6cm}L{2.0cm}L{7.0cm}}
+    \toprule
+    項目 & 値 & 備考 \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{認識から指令までの遅延}}\\*
+    平均 & 0.069\,s & R1 0.056\,s，B1 0.086\,s \\
+    95パーセント点 & 0.104\,s & R1 0.076\,s，B1 0.104\,s \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{車輪半径}}\\*
+    採用値 & 0.1265\,m & R1 0.1259〜0.1262，B1 0.1251〜0.1258\,m \\
+    \midrule
+    \multicolumn{3}{l}{\textbf{連続検出の開始距離と停止}（R1の3回の接近の中央値）}\\*
+    コーン（報告距離） & 9.5\,m & 8.0〜10.4\,m \\
+    コーン（実距離） & 17.7\,m & 14.0〜22.7\,m \\
+    パネル（実距離） & 22.9\,m & 20.9〜23.9\,m \\
+    停止点の初回発行距離$d_0$ & 6.98\,m & 4.71〜9.37\,m \\
+    真の停止線に対する行き過ぎ & $+0.22$\,m & $-0.24$〜$+0.65$\,m \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Driving tests for the identification of the vehicle response.]{Driving tests for the identification of the vehicle response (manual operation).}
+  \label{tab:ident_runs}
+  \small
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{5pt}\begin{tabular}{rrrrr}
+    \toprule
+    \shortstack[r]{上限速度の\\設定値 {[m/s]}} & \shortstack[r]{時間\\{[s]}} & \shortstack[r]{停止からの\\最大指令での加速 {[回]}} & \shortstack[r]{制動\\{[回]}} & \shortstack[r]{定常旋回の区間\\{[回]（左／右）}} \\
+    \midrule
+    3.0 & 73.2 & 2 & 4 & 4／4 \\
+    4.0 & 73.8 & 1 & 1 & 3／1 \\
+    4.5 & 73.0 & 2 & 2 & 2／2 \\
+    5.0 & 71.6 & 1 & 4 & 4／5 \\
+    5.5 & 68.9 & 0 & 4 & 2／1 \\
+    6.0 & 70.8 & 0 & 1 & 0／1 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{最大指令での加速は，停止から設定値の90\,\%以上へ指令値を上げた事象，制動は，指令値を2.5\,m/s以上から0にした事象の回数である．定常旋回の区間の定義は\ref{sec:ident_test}項のとおりである．}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Driving tests B for the identification of the vehicle response.]{Driving tests B for the identification of the vehicle response (manual operation).}
+  \label{tab:ident_runs_b}
+  \small
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{5pt}\begin{tabular}{rrrl}
+    \toprule
+    \shortstack[r]{上限速度の\\設定値 {[m/s]}} & \shortstack[r]{走行時間\\{[s]}} & \shortstack[r]{定常旋回の区間\\{[回]（左／右）}} & 慣性航法装置の記録 \\
+    \midrule
+    4.0 & 73.5 & 4／3 & なし \\
+    5.0 & 23.6 & 1／0 & なし \\
+    5.0 & 60.8 & 1／3 & なし \\
+    5.5 & 30.6 & 0／1 & あり（走行全体） \\
+    5.5 & 46.2 & 0／0 & あり（走行全体） \\
+    5.5 & 89.7 & 0／1 & あり（走行の最初の約11\,s） \\
+    6.0 & 56.4 & 3／2 & なし \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{走行時間は，車輪速が0でない区間の長さである．慣性航法装置の記録がない走行では，従動輪の舵角と左右の駆動輪の回転速度の記録を用いる．定常旋回の区間の定義は\ref{sec:ident_test}項のとおりである．}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Steering response identified from the driving tests A and B.}
+  \label{tab:ident2}
+  \small
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{0.9}\begin{tabular}{L{3.8cm}rrL{6.2cm}}
+    \toprule
+    項目 & 走行試験A & 走行試験B & 備考  \\
+    \midrule
+    等価舵角のむだ時間$T_\delta$ [s] & 0.00 & 0〜0.04 & A：許容範囲0〜0.06．B：慣性航法装置のある2本  \\
+    等価舵角の時定数$\tau_\delta$ [s] & 0.23 & 0.19〜0.28 & B：2本，計約42\,s  \\
+    等価舵角のゲイン$K_\delta$ & 0.96 & 0.95〜1.03 & B：2本  \\
+    実舵角のむだ時間 [s] & 0.02 & 0.02 &  \\
+    実舵角の時定数 [s] & 0.26 & 0.27 & 速度とともに増える（本文）  \\
+    実舵角のゲイン & 1.04 & 0.86 & Bの定常の目標舵角に対する比は1.00  \\
+    定常旋回の左右の比（等価舵角／目標舵角） & 左0.83，右1.13 & 左0.84，右0.94 & 実舵角の比：A 左1.13，右1.04．B 左1.04，右0.95  \\
+    制限の横加速度$a_{\mathrm{lim}}$ [m/s$^2$] & 3.50 & 3.00 & 設定値と一致．上限速度を変えた9本は\ref{sec:ay_result}節  \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{シミュレーションは走行試験Aの列を用いる．走行試験Bの等価舵角の比は左右の駆動輪の回転速度の差から求めた値である．周回走行（R1，B1）の値：$T_\delta$ 0.05\,s，$\tau_\delta$ 0.22\,s（R1 0.11，B1 0.26），$K_\delta$ 1.07（R1 1.04，B1 1.09）．}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{images/ident_step_steer.png}
+  \caption[Steering response in the driving test and the fitted model.]{Target steering angle after the limit, caster angle, equivalent steering angle, and the output of the fitted model in the driving test with the upper speed limit set to 5.0\,m/s.}
+  \label{fig:ident_step_steer}
+\end{figure}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Integral term of the longitudinal PID control and its reset at the signal stops (3 stops each).}
+  \label{tab:reset}
+  \small
+  \begin{lrbox}{\tblbox}\begin{tabular}{lrrrr}
+    \toprule
+    走行 & \shortstack[r]{$d_0$\\{[m]}} & \shortstack[r]{積分項の\\最大 {[m/s$^2$]}} & \shortstack[r]{リセット$-$\\読みが0 {[s]}} & \shortstack[r]{リセット直前の\\積分項 {[m/s$^2$]}} \\
+    \midrule
+    R40 & 6.5〜6.8 & 0.50 & 0.0〜0.2 & 0.25〜0.29 \\
+    R50 & 4.3〜4.6 & 0.49〜0.50 & 0.6〜0.7 & 0.14〜0.36 \\
+    R60 & 5.7〜7.4 & 0.50 & 0.9〜1.2 & 0.13〜0.26 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{$d_0$は停止点の初回発行距離である．リセット$-$読みが0は，積分項が0になった時刻から車輪速の読みが0になった時刻を引いた値の範囲である．}
+\end{table}
+
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{images/ident_lateral_ab.png}
+  \caption[Lateral acceleration in the steady turns versus speed.]{Lateral acceleration in the steady turns versus speed in the driving tests A and B. Each point is the mean over a steady-turn section, obtained from the caster angle ($v^2\tan\delta_{\mathrm{c}}/L$) and from the yaw rate ($vr$) for left and right turns. In test A the yaw rate is from the inertial navigation system, and in test B it is from the difference of the wheel speeds (uncertainty of $\pm 10$\,\% or more). Crosses mark the sections of test A outside the slip or roll condition (slip $>3^\circ$ or roll $>2^\circ$). The lines are the lateral accelerations at the limit of the target steering angle (Eq.~(\ref{eq:steerlimit}), $a_{\mathrm{lim}}=3.5$ and $3.0$\,m/s$^2$); the actual lateral acceleration can exceed it by a factor of 1.2 to 1.4. The maximum of 4.8\,m/s$^2$ is a 1\,s mean inside a section, whereas each point is a section mean.}
+  \label{fig:ident_lateral}
+\end{figure}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Fluctuation of the generated path (lateral position, R1 and B1).}
+  \label{tab:patherr}
+  \small
+  \begin{lrbox}{\tblbox}\begin{tabular}{lrrr}
+    \toprule
+    項目 & R1 & B1 & R1+B1 \\
+    \midrule
+    \multicolumn{4}{l}{\textbf{先端以外の行}} \\
+    ラプラス尺度 [m] & 0.038 & 0.053 & 0.045 \\
+    95パーセント点（絶対値）[m] & 0.109 & 0.186 & 0.138 \\
+    相関$\rho$（連続フレーム） & 0.63 & 0.68 & 0.67 \\
+    白色成分の標準偏差 [m] & 0.021 & 0.039 & 0.031 \\
+    \midrule
+    \multicolumn{4}{l}{\textbf{先端（最後の行）}} \\
+    ラプラス尺度 [m] & 0.204 & 0.358 & 0.276 \\
+    95パーセント点（絶対値）[m] & 0.910 & 1.280 & 1.090 \\
+    相関$\rho$（連続フレーム） & 0.83 & 0.72 & 0.74 \\
+    \midrule
+    \multicolumn{4}{l}{\textbf{認識距離（経路生成の出力の最遠点の$x$）}} \\
+    中央値 [m] & 8.85 & 8.87 & 8.86 \\
+    25パーセント点 [m] & 8.80 & 6.11 & 7.61 \\
+    6\,m未満のフレームの割合 [\%] & 21.3 & 24.8 & 23.0 \\
+    6\,m未満が続く長さ（平均／最大）[フレーム] & 16.7／64 & 9.8／56 & 12.2／64 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{対象は，自律走行区間のうち車輪速が1.5\,m/s以上のフレーム（R1 2983，B1 2672）である．サンプル数は，先端以外の行がR1 58{,}670，B1 52{,}450，先端がR1 2867，B1 2552である．$\rho$は連続するフレーム（66.7\,ms）の相関である．R1+B1は2本をまとめて計算した．}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{images/path_error.png}
+  \caption[Fluctuation of the generated path versus forward distance.]{Lateral fluctuation of the generated path versus forward distance in R1 and B1: median (solid) and 5th and 95th percentiles (dashed).}
+  \label{fig:path_error}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.55\textwidth]{images/detection_distance.png}
+  \caption[Reported distance of the cone versus its true distance.]{Reported distance of the cone versus its true distance in R1 (three approaches, 314 detections). The dashed line is $y=x$.}
+  \label{fig:detection_distance}
+\end{figure}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Ratio of the reported distance to the true distance of the cone.}
+  \label{tab:range}
+  \small
+  \begin{lrbox}{\tblbox}\begin{tabular}{rrrrrr}
+    \toprule
+    \shortstack[r]{実距離の区間\\{[m]}} & サンプル数 & \shortstack[r]{実距離の\\中央値 {[m]}} & \shortstack[r]{報告距離の\\中央値 {[m]}} & \shortstack[r]{報告／実の\\中央値} & \shortstack[r]{報告／実の\\10〜90パーセント点} \\
+    \midrule
+    2〜4 & 80 & 3.5 & 3.5 & 1.00 & 0.98〜1.03 \\
+    4〜6 & 62 & 4.8 & 4.8 & 0.97 & 0.91〜1.02 \\
+    6〜8 & 25 & 6.6 & 5.7 & 0.84 & 0.83〜0.87 \\
+    8〜10 & 15 & 9.0 & 6.8 & 0.76 & 0.74〜0.80 \\
+    10〜13 & 21 & 11.6 & 7.9 & 0.70 & 0.66〜0.73 \\
+    13〜17 & 26 & 15.1 & 8.6 & 0.61 & 0.56〜0.63 \\
+    17〜22 & 52 & 20.6 & 11.1 & 0.55 & 0.53〜0.58 \\
+    22〜30 & 29 & 25.0 & 12.3 & 0.49 & 0.44〜0.52 \\
+    30〜40 & 4 & 34.3 & 18.2 & 0.52 & 0.51〜0.59 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{対象は，初回の停止点の25\,s前から停止までに，真の方位$\pm 2^\circ$以内で検出されたコーンである．サンプルは3回の接近の同一物体であり，フレーム間は独立でない．}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Fluctuation of the generated path (lateral position) in the nine runs.}
+  \label{tab:patherr_1119}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{L{3.9cm}rrrrrr}
+    \toprule
+    & R40 & R50 & R60 & \shortstack[r]{B40a，\\B40b} & \shortstack[r]{B50a，\\B50b} & \shortstack[r]{B60a，\\B60b} \\
+    \midrule
+    \multicolumn{7}{l}{\textbf{先端以外の行}} \\
+    ラプラス尺度 [m] & 0.048 & 0.064 & 0.067 & 0.060 & 0.067 & 0.075 \\
+    95パーセント点 [m] & 0.145 & 0.192 & 0.168 & 0.183 & 0.198 & 0.216 \\
+    相関$\rho$ & 0.75 & 0.71 & 0.71 & 0.67 & 0.70 & 0.71 \\
+    白色成分の標準偏差 [m] & 0.020 & 0.040 & 0.044 & 0.043 & 0.037 & 0.044 \\
+    \midrule
+    \multicolumn{7}{l}{\textbf{先端（最後の行）}} \\
+    ラプラス尺度 [m] & 0.147 & 0.180 & 0.190 & 0.212 & 0.228 & 0.241 \\
+    95パーセント点 [m] & 0.390 & 0.525 & 0.500 & 0.756 & 0.734 & 0.751 \\
+    相関$\rho$ & 0.83 & 0.84 & 0.79 & 0.75 & 0.82 & 0.79 \\
+    \midrule
+    \multicolumn{7}{l}{\textbf{認識距離}} \\
+    中央値 [m] & 8.30 & 8.30 & 8.33 & 8.29 & 8.29 & 8.31 \\
+    25パーセント点 [m] & 8.21 & 8.16 & 8.20 & 8.13 & 8.13 & 8.14 \\
+    6\,m未満の割合 [\%] & 0.0 & 0.0 & 0.2 & 4.3 & 4.9 & 5.7 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{対象は，自律走行区間のうち車輪速が1.5\,m/s以上のフレーム（R40 2946，R50 2425，R60 2186，青の4.0，5.0，6.0\,m/s各2本の合計5945，5139，4615）である．$\rho$は連続するフレーム（66.7\,ms）の相関である．青の2本は上限速度ごとにまとめて計算した．R1，B1の値はTable~\ref{tab:patherr}に示す．}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Time from the route command to the switch of the local path (blue course, median of 3 laps).}
+  \label{tab:branch_switch}
+  \small
+  \begin{lrbox}{\tblbox}\begin{tabular}{lrrr}
+    \toprule
+    走行 & \shortstack[r]{分岐\\{[s]}} & \shortstack[r]{右カーブ\\{[s]}} & \shortstack[r]{交差点\\{[s]}} \\
+    \midrule
+    B40a & 2.7 & 0.9 & 2.0 \\
+    B40b & 2.9 & 1.2 & 1.6 \\
+    B50a & 2.7 & 0.7 & 1.8 \\
+    B50b & 2.4 & 1.1 & 1.9 \\
+    B60a & 2.1 & 0.8 & 1.4 \\
+    B60b & 1.0 & 0.7 & 1.3 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{指示の発行から，局所経路の前方8\,mの横位置が分岐側へ1.0\,m以上寄るまでの時間である．}
 \end{table}

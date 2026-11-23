@@ -1,405 +1,474 @@
-\chapter{実車走行の結果}
+\chapter{実車走行における同定とラップタイムの内訳}
 \label{chap:field}
-本章では，走行試験と，赤コースと青コースの2本の周回走行（R1，B1）について，走行条件，車両応答と認識の同定結果，周回走行の結果，ラップタイムの内訳を示す．
+本章では，走行試験と，赤コースと青コースの周回走行11本について，走行条件，車両応答と認識の同定，周回走行の結果，ラップタイムの内訳を示す．周回走行のうちR1とB1は，経路生成の揺らぎ，信号とコーンの検出，認識から指令までの遅延の同定に用いた走行である．残りの9本は，上限速度を4.0，5.0，6.0\,m/sと上げた走行であり，同定には用いない．この9本で，上限速度を上げたときのラップタイムの内訳を示し，\ref{chap:contribution}章のシミュレーションの検証にも用いる．
 
 \section{走行条件}
 \label{sec:field_cond}
-走行は，車両応答と物理限界を同定するための走行試験と，ラップタイムを評価するための周回走行（R1，B1）からなる．
+走行は，車両応答と確認性能を同定するための走行試験と，ラップタイムを評価するための周回走行からなる．
 
-走行試験は，コースとは別の舗装路で，手動操縦により行った．Table~\ref{tab:ident_runs}に6本の走行の一覧を示す．各走行で，設定速度からの制動，一定速度での舵角の段階入力と舵角いっぱいの定常旋回（左右）を行った．このほかに，指令値の符号を反転させる制動と，走行中の再加速を含む．停止からの全開加速は上限速度の設定値が5.0\,m/s以下の走行で行い，それより高い設定値の走行では指令値を階段状に上げて加速した．舵角の目標値は，安全のため，速度に応じて\eqnref{eq:steerlimit}の値以下に制限した．
+走行試験は，コースとは別の舗装路で，手動操縦により，日を改めて2回行った（走行試験A：6本，走行試験B：7本．付録のTable~\ref{tab:ident_runs}，\ref{tab:ident_runs_b}）．各走行で，設定速度までの加速，設定速度からの制動，左右の旋回を行い，走行試験Aでは一定速度での舵角の段階入力と最大舵角の定常旋回を加えた．停止から設定値の90\,\%以上へ指令値を上げる加速（最大指令での加速）は，設定値が5.0\,m/s以下の走行で行い，それより高い設定値の走行では指令値を段階的に上げて加速した．舵角の目標値は，安全のため，速度に応じて\eqnref{eq:steerlimit}の値以下に制限した．
 
-\begin{table}[H]
-  \centering
-  \caption[Driving tests for the identification of the vehicle response.]{Driving tests for the identification of the vehicle response (manual operation).}
-  \label{tab:ident_runs}
-  \small
-  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{5pt}\begin{tabular}{rrrrr}
-    \toprule
-    \shortstack[r]{上限速度の\\設定値 {[m/s]}} & \shortstack[r]{時間\\{[s]}} & \shortstack[r]{停止からの\\全開加速 {[回]}} & \shortstack[r]{制動\\{[回]}} & \shortstack[r]{定常旋回の区間\\{[回]（左／右）}} \\
-    \midrule
-    3.0 & 73.2 & 2 & 4 & 4／4 \\
-    4.0 & 73.8 & 1 & 1 & 3／1 \\
-    4.5 & 73.0 & 2 & 2 & 2／2 \\
-    5.0 & 71.6 & 1 & 4 & 4／5 \\
-    5.5 & 68.9 & 0 & 4 & 2／1 \\
-    6.0 & 70.8 & 0 & 1 & 0／1 \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{全開加速は，停止から設定値の90\,\%以上へ指令値を上げた事象，制動は，指令値を2.5\,m/s以上から0にした事象の回数である．定常旋回の区間の定義は\ref{sec:ident_test}項のとおりである．}
-\end{table}
+周回走行は，AI-Formulaのコースで行った．コースは赤コースと青コースからなり，1周の長さはGNSSの経路長で赤約260\,m，青約257\,mである．Table~\ref{tab:runs}に，11本の走行の一覧を示す．R1とB1は，コース，上限速度，経路追従制御，速度計画の横加速度の上限が異なる以前の走行であり，同定とシミュレーションの構成に用いた．上限速度を変えた9本は，赤コースの3本（R40，R50，R60）と青コースの6本（B40a〜B60b）である．この9本は，MPC，速度計画の横加速度の上限2.0\,m/s$^2$，分岐での速度抑制4.0\,m/sの同じ設定で走行し，コースと上限速度だけが異なる．このほかに完走しなかった走行が2本あり，分析は完走した走行だけについて行った．
 
-周回走行は，AI-Formulaのコースで行った．コースは赤コースと青コースからなり，1周の長さはGNSSの経路長で赤約260\,m，青約257\,mである．Table~\ref{tab:runs}に2本の走行の一覧を示す．R1とB1は，コース，上限速度の設定値$v_{\mathrm{cap}}$，経路追従制御が異なる．R1は各周で信号停止を行い，B1には信号停止がない．B1の経路選択の指示はトポロジカルマップから生成し，交差点で指示が直進以外のあいだ，速度計画の上限を4.0\,m/sに下げる（分岐での速度抑制）．R1，B1とも，解析範囲（\ref{sec:run4}節）で操作者の介入はなかった．速度と走行距離は，車輪速を同定した車輪半径（\ref{sec:ident_result}節）で換算した値である．他の設定はTable~\ref{tab:params}のとおりで，2本で同じである．記録する項目と評価指標は\ref{sec:field_method}節に示した．
-
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
   \caption{Autonomous driving runs.}
   \label{tab:runs}
   \small
-  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{5pt}\begin{tabular}{llrlrrrr}
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{llrlrrrr}
     \toprule
-    走行 & コース & \shortstack[r]{上限速度の\\設定値 {[m/s]}} & 追従制御 & 周回数 & \shortstack[r]{信号停止\\{[回]}} & \shortstack[r]{自律走行時間\\{[s]}} & \shortstack[r]{走行距離\\{[m]}} \\
+    走行 & コース & \shortstack[r]{$v_{\mathrm{cap}}$\\{[m/s]}} & 経路追従制御 & \shortstack[r]{$a_{y,\max}$\\{[m/s$^2$]}} & \shortstack[r]{分岐での\\抑制 {[m/s]}} & \shortstack[r]{3周目の\\到達率 {[\%]}} & \shortstack[r]{信号停止\\{[回]}} \\
     \midrule
-    R1 & 赤 & 4.0 & Pure Pursuit法 & 3.00 & 3 & 219.0 & 780.0 \\
-    B1 & 青 & 4.5 & MPC & 2.97 & 0 & 178.7 & 767.1 \\
+    R1 & 赤 & 4.0 & Pure Pursuit法 & 3.0 & --- & 100 & 3 \\
+    B1 & 青 & 4.5 & MPC & 3.0 & 4.0 & 97.5 & 0 \\
+    \midrule
+    R40 & 赤 & 4.0 & MPC & 2.0 & --- & 99.1 & 3 \\
+    R50 & 赤 & 5.0 & MPC & 2.0 & --- & 99.7 & 3 \\
+    R60 & 赤 & 6.0 & MPC & 2.0 & --- & 100 & 3 \\
+    B40a & 青 & 4.0 & MPC & 2.0 & 4.0 & 99.7 & 0 \\
+    B40b & 青 & 4.0 & MPC & 2.0 & 4.0 & 99.8 & 0 \\
+    B50a & 青 & 5.0 & MPC & 2.0 & 4.0 & 99.4 & 0 \\
+    B50b & 青 & 5.0 & MPC & 2.0 & 4.0 & 100 & 0 \\
+    B60a & 青 & 6.0 & MPC & 2.0 & 4.0 & 100 & 0 \\
+    B60b & 青 & 6.0 & MPC & 2.0 & 4.0 & 97.4 & 0 \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{自律走行時間と走行距離は解析範囲の値であり，走行距離は車輪速の積算である．周回数は走行距離を，基準線で区切った周の車輪速積算の平均周長（R1：260.0\,m，B1：258.3\,m）で割った値であり，周長はGNSS経路長と0.3\,\%以内で一致する．}
+  \tblnote{$v_{\mathrm{cap}}$は上限速度，$a_{y,\max}$は速度計画の横加速度の上限である．3周目の到達率は，解析範囲で走行した3周目の距離の，周長に対する割合であり，100\,\%の走行は3周目が完全な周である．完全な周は，100\,\%の走行（R1，R60，B50b，B60a）が3周，その他が2周である．最上段の2本（R1，B1）は設定の異なる以前の走行である．}
 \end{table}
+
+9本の速度計画の横加速度の上限は2.0\,m/s$^2$，分岐での速度抑制は4.0\,m/s（いずれも設定値）である．走行の記録でも，速度計画の出力の$v^2|\kappa|$の最大が9本とも2.0\,m/s$^2$であり，抑制値4.0\,m/sに張り付いた区間があることを確認した．これらの設定値は，事前の走行で周回の成功率が最も高かった組合せである．横加速度の上限は以前の走行の3.0\,m/s$^2$から2.0\,m/s$^2$に下げた．停止専用の減速度は，停止点までの距離が短い場合にも停止できるように1.5\,m/s$^2$から3.0\,m/s$^2$に上げた．分岐での速度抑制は，分岐のカーブの手前で減速を間に合わせるための設定である．
+舵角の制限の横加速度$a_{\mathrm{lim}}$は3.0\,m/s$^2$（設定値）であり，走行の記録の制限後の目標舵角でも同じ値を確認した（\ref{sec:ay_result}節）．赤コースの各周には信号停止が1回あり，青コースには信号停止がない．B1と青の6本の経路選択の指示は，トポロジカルマップから生成し，交差点で指示が直進以外のあいだ，速度計画の上限を4.0\,m/sに下げる（分岐での速度抑制）．上限速度が4.0\,m/sの走行では，抑制値が上限速度と等しい．速度と走行距離は，車輪速を同定した車輪半径（\ref{sec:ident_result}節）で換算した値である．他の設定はTable~\ref{tab:params}，\ref{tab:params2}のとおりである．計時線，完全な周，ラップタイムの比較に2周目を用いる理由，記録する項目と評価指標は\ref{sec:field_method}節に示した．本論文の分析の範囲は，上限速度6.0\,m/s以下とする．
+
+\section{車両応答と認識の同定}
+\label{sec:identification}
+閉ループシミュレーションに用いる車両モデルと確認性能は，手動操縦による走行試験（走行試験A，B）から同定する（\ref{sec:ident_test}項）．認識から指令までの遅延，信号とコーンの連続検出の開始距離，停止点の初回発行距離は，R1とB1の周回走行中に記録した指令値と応答（閉ループデータ）から同定する（\ref{sec:ident_lap}項）．周回走行では，指令値が曲率や停止点に応じて連続的に変化するが，最大指令での加速や最大舵角の旋回のような大きな入力は含まれず，指令値や横加速度が，加速と減速の上限，確認した最高速度，確認した横加速度に達しない．このため，これらは周回走行の記録からは同定せず，走行試験の値と，周回走行で確認した最大値を用いる．同定には周回走行のうちR1とB1だけを用い，上限速度を変えた9本は用いない．
+
+\subsection{走行試験による車両応答と確認性能の同定}
+\label{sec:ident_test}
+車体制御系（\ref{sec:chassis}節）は，並進速度の指令値を一定の加速度（5.0\,m/s$^2$）で追従させた速度を内部に持つ．安全のため，走行試験では，舵角の目標値をこの速度$v$に応じた\eqnref{eq:steerlimit}の$\delta_{\mathrm{lim}}$以下に制限した．制限の横加速度$a_{\mathrm{lim}}$は，走行試験Aは3.5\,m/s$^2$，走行試験Bは3.0\,m/s$^2$である．制限後の目標舵角が記録されており，操舵の同定の入力にはこの値$\delta_{\mathrm{cmd}}$を用いる．制御器が出力する舵角の指令値は制限の前の値であるため用いない．上式の$v$は走行試験Aでは記録されていないため，並進速度の指令値の記録から再現した値を用い，走行試験Bでは，車体制御系の内部の速度の記録（後述の$v_{\mathrm{int}}$）を用いる．記録した目標舵角から$a_{\mathrm{lim}}$を最小二乗で推定して，設定した値と一致することを確かめる．
+
+並進速度の応答は，指令値$v_{\mathrm{cmd}}$に対する実速度$v$（駆動輪の回転速度に車輪半径0.1265\,mを掛けた値）を，むだ時間$T_v$，一次遅れの時定数$\tau_v$，定常ゲイン$K_v$を持つ
+\begin{equation}
+  \tau_v \dot{v}(t) + v(t) = K_v\, \hat{v}_{\mathrm{cmd}}(t - T_v)
+  \label{eq:vmodel}
+\end{equation}
+として当てはめる．ここで$\hat{v}_{\mathrm{cmd}}$は，$v_{\mathrm{cmd}}$に向かって，増加を加速の上限$a_{\mathrm{acc}}$，減少を減速の上限$a_{\mathrm{dec}}$以下の勾配に制限して追従する値であり，$-a_{\mathrm{dec}} \le \dot{\hat{v}}_{\mathrm{cmd}} \le a_{\mathrm{acc}}$を満たす．指令値の記録を入力として上式から計算した応答と実測の応答との二乗誤差が最小になるように，$T_v$，$\tau_v$，$K_v$，$a_{\mathrm{acc}}$，$a_{\mathrm{dec}}$を求める．当てはめには，開始時に定常であった加速と制動のうち速度の変化が大きいもの（加速は2.5\,m/s以上，計37本）を用い，勾配制限を持たないモデルとも比べる．
+
+走行試験Bでは，車体制御系の内部の速度$v_{\mathrm{int}}$（駆動輪の回転速度の指令値の記録を車輪半径の設定値0.124\,mで換算した値であり，$v_{\mathrm{cmd}}$を5.0\,m/s$^2$で勾配制限した値に当たる）を入力とした当てはめも行う．この入力ではむだ時間$T_v$が一次遅れと分けて求まる．当てはめの詳細は付録\ref{sec:app_ident}に示す．
+
+操舵の応答は，ヨーレート$r$と速度から等価舵角$\delta_{\mathrm{eq}}=\arctan(L r / v)$を求め，制限後の目標舵角$\delta_{\mathrm{cmd}}$に対する応答を，むだ時間$T_\delta$，時定数$\tau_\delta$，ゲイン$K_\delta$を持つ
+\begin{equation}
+  \tau_\delta \dot{\delta}_{\mathrm{eq}}(t) + \delta_{\mathrm{eq}}(t) = K_\delta\, \delta_{\mathrm{cmd}}(t - T_\delta)
+  \label{eq:steermodel}
+\end{equation}
+として当てはめる．従動輪の舵角（実舵角）$\delta_{\mathrm{c}}$にも，$\delta_{\mathrm{eq}}$を$\delta_{\mathrm{c}}$に置き換えた同じ式を当てはめる．当てはめは並進速度が2.5\,m/s以上の区間で行い，走行試験Aは6本，走行試験Bは7本をまとめて求める．等価舵角の直進時の偏りは定数の切片として含めた当てはめも行う．走行試験Bの4本は慣性航法装置の記録がなく，ヨーレートは左右の駆動輪の回転速度の差に比例する値（係数は慣性航法装置のある走行に合わせて定める）で求め，$\pm 10$\,\%以上の不確かさがあるため，定常区間の平均だけに用いる．
+
+確認した最高速度は車輪速の1\,s平均の最大で，確認した横加速度は定常旋回の区間のヨーレートからの$vr$と従動輪の舵角からの$v^2\tan\delta_{\mathrm{c}}/L$の1\,s平均の最大で表す．走行試験Aの定常旋回の区間は，並進速度が設定値の$\pm 10$\,\%以内で目標舵角がほぼ一定の1.5\,s以上の区間で，等価舵角と実舵角の差が$3^\circ$以内，ロールの振れが$2^\circ$以内の窓だけを用いる．走行試験Bは，目標舵角が$2^\circ$を超えて一定，速度2\,m/s以上，速度の幅20\,\%以内の1.0\,s以上の区間とし，破綻の有無は区間内の速度の変化とロールの振れから調べる．
+
+\subsection{周回走行からの同定}
+\label{sec:ident_lap}
+次の量は，R1とB1の周回走行中に記録した指令値と応答（閉ループデータ）から同定する．
+\begin{enumerate}
+  \item 認識から指令までの遅延：画像の撮影時刻と，その画像に基づく最初の指令値が出力された時刻の差を，周回走行中の全フレームについて求め，平均と95パーセント点で表す．
+  \item 信号とコーンの連続検出の開始距離と停止点の初回発行距離：記録した検出結果から，接近ごとに次の距離を求める．報告距離は検出結果が報告する距離であり，実距離は停止直前（6\,m未満）の近距離の検出から求めた物体の位置と自己位置から求めた前方距離である．連続検出の開始距離は，停止点の初回発行のフレームまで，欠落が2フレーム（0.13\,s）以内で続く検出の開始時点の距離であり，コーンは報告距離と実距離，信号パネルは実距離で求める．あわせて，停止点が最初に発行された時点での停止点までの距離（初回発行距離$d_0$）と，停止点の発行から停止した位置までの走行距離（車輪速の積算）を求め，報告距離が実距離とどの程度異なるかを調べる．
+\end{enumerate}
+また，周回走行の閉ループデータにも並進速度と操舵の応答を当てはめ，走行試験の値と比べる．周回走行中の指令値は曲率や停止点に応じて連続的に変化するため，この変化を励起として用いる．並進速度は勾配制限を持たない\eqnref{eq:vmodel}を，操舵は制御器が出力した舵角の指令値を$\delta_{\mathrm{cmd}}$とした\eqnref{eq:steermodel}を等価舵角に当てはめる．周回走行では指令値の変化が小さく，制御器が車両の状態から指令値を出すため，ゲインと遅れは偏りうる．
+
+\section{経路生成の揺らぎの計測}
+\label{sec:path_error}
+経路生成の揺らぎは，閉ループシミュレーションで経路生成を置き換えるモデルに用いる．周回走行（R1，B1，および比較のため上限速度を変えた9本）で記録した画像に対する推論結果について，次の量を求める．
+\begin{enumerate}
+  \item 前方距離ごとの横位置の揺らぎ：前後1\,sの推論結果を自己位置推定の変位で現在の車両座標系に揃えた中央値を参照値とし，各フレームの横位置との差を，前方距離ごとに集計する．大きさはラプラス分布の尺度（中央値からの絶対偏差の平均）と95パーセント点で表し，時間方向の性質は連続するフレーム間の相関係数$\rho$と，1次の自己回帰成分を除いた残りの白色成分の標準偏差で表す．経路の先端（各フレームの最後の行）は揺らぎが大きいため，先端以外の行と分けて集計する．
+  \item 認識距離（\ref{sec:path_smoother}節）の分布と，認識距離が6\,m未満の状態が続く長さ．
+\end{enumerate}
+これらは経路生成の出力の時間方向の揺らぎであり，路面に対する偏りは含まない．
 
 \section{車両応答と認識の同定結果}
 \label{sec:ident_result}
-\ref{sec:ident_test}項の方法を走行試験の記録に適用して求めた車両応答をTable~\ref{tab:ident}に，\ref{sec:ident_lap}項の方法をR1とB1の自律走行区間の記録に適用して求めた認識から指令までの遅延などをTable~\ref{tab:ident_lap}に示す．Table~\ref{tab:ident}の並進速度と操舵の応答は，走行試験の6本をまとめて当てはめた値を示し，備考に，R1とB1をまとめて当てはめた周回走行（閉ループ）の値と，括弧内に各走行の値を，比較のために示す．Table~\ref{tab:ident_lap}の認識から指令までの遅延は，R1とB1をまとめた値を示し，備考に各走行の値を示す．
+\ref{sec:ident_test}項の方法を走行試験の記録に適用して求めた車両応答をTable~\ref{tab:ident}と付録のTable~\ref{tab:ident2}に，\ref{sec:ident_lap}項の方法をR1とB1の自律走行区間の記録に適用して求めた認識から指令までの遅延などを付録のTable~\ref{tab:ident_lap}に示す．両表は，走行試験AとBの値を並べ，どちらの値を何に用いるかは表の注に示す．並進速度と操舵の応答は，走行試験Aは6本，走行試験Bは7本をまとめて当てはめた値である．付録のTable~\ref{tab:ident_lap}の遅延は，R1とB1をまとめた値を示し，備考に各走行の値を示す．
 
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
-  \caption{Vehicle response identified from the driving tests.}
+  \caption{Velocity response identified from the driving tests A and B.}
   \label{tab:ident}
   \small
-  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{0.85}\begin{tabular}{L{3.7cm}L{2.3cm}L{9.1cm}}
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{0.9}\begin{tabular}{L{3.8cm}rrL{6.2cm}}
     \toprule
-    項目 & 値 & 備考 \\
+    項目 & 走行試験A & 走行試験B & 備考  \\
     \midrule
-    \multicolumn{3}{l}{\textbf{並進速度の応答}（走行試験，\eqnref{eq:vmodel}）}\\*
-    加速の上限$a_{\mathrm{acc}}$ & 3.95\,m/s$^2$ & ピーク平均4.7，持続3.0\,m/s$^2$ \\
-    減速の上限$a_{\mathrm{dec}}$ & 4.06\,m/s$^2$ & ピーク平均4.2，持続3.6\,m/s$^2$ \\
-    時定数$\tau_v$ & 0.21\,s & 周回走行0.24\,s（R1 0.21，B1 0.29） \\
-    線形域の時定数 & 0.19\,s & ゲイン固定．自由：0.27\,s（ゲイン1.15） \\
-    むだ時間$T_v$ & 同定できない & 和$T_v+\tau_v$は周回走行で0.21〜0.29\,s \\
-    定常ゲイン$K_v$ & 0.98 & 周回走行0.992（R1 0.993，B1 0.991） \\
-    当てはめ誤差（RMSE） & 0.135\,m/s & 勾配制限なしは0.62\,m/s \\
-    到達した最高速度 & 5.82\,m/s & 1\,s平均．瞬時値の最大6.0\,m/s \\
-    \midrule
-    \multicolumn{3}{l}{\textbf{操舵の応答}（走行試験，\eqnref{eq:steermodel}，2.5\,m/s以上）}\\*
-    等価舵角のむだ時間$T_\delta$ & 0\,s & 0〜0.06\,s．周回走行0.05\,s（R1 0.10，B1 0.04） \\
-    等価舵角の時定数$\tau_\delta$ & 0.23\,s & 周回走行0.22\,s（R1 0.11，B1 0.26） \\
-    等価舵角のゲイン$K_\delta$ & 0.96 & 周回走行1.07（R1 1.04，B1 1.09） \\
-    実舵角のむだ時間 & 0.02\,s & 0〜0.10\,s \\
-    実舵角の時定数 & 0.26\,s & 3\,m/s設定0.21，5.5\,m/s設定0.36\,s \\
-    実舵角のゲイン & 1.04 & 決定係数0.95 \\
-    定常旋回の左右の比（等価舵角／目標舵角） & 左0.83\newline 右1.13 & 実舵角の比は左1.13，右1.04 \\
-    制限の横加速度$a_{\mathrm{lim}}$ & 3.50\,m/s$^2$ & 設定値3.5\,m/s$^2$と一致 \\
-    \midrule
-    \multicolumn{3}{l}{\textbf{横加速度の確認できた最大}（走行試験，定常旋回，1\,s平均）}\\*
-    $vr$ & 4.8\,m/s$^2$ & 右旋回．左旋回は2.2〜3.0\,m/s$^2$ \\
-    $v^2\tan\delta_{\mathrm{c}}/L$ & 5.2\,m/s$^2$ & 右旋回 \\
+    加速の上限（指令値入力）$a_{\mathrm{acc}}$ [m/s$^2$] & 3.95 & --- & ピーク平均4.7，持続3.0  \\
+    加速の上限（$v_{\mathrm{int}}$からの上限）[m/s$^2$] & --- & 4.30 & Bはピーク2.3〜4.8  \\
+    減速の上限$a_{\mathrm{dec}}$ [m/s$^2$] & 4.06 & --- & ピーク平均4.2，持続3.6．Bは持続3.3〜3.8  \\
+    時定数$\tau_v$ [s] & 0.21 & 0.30 & B：$v_{\mathrm{int}}$入力でむだ時間と分離．指令値入力で$v_{\mathrm{int}}$の勾配を固定した値はA 0.34，B 0.37  \\
+    線形域の時定数 [s] & 0.19 & 0.20 & ゲイン固定．自由：A 0.27，B 0.22  \\
+    むだ時間$T_v$ [s] & 0.21（和$T_v+\tau_v$） & $\le 0.02$ & B：$v_{\mathrm{int}}$から車輪速まで．和$T_v+\tau_v$は0.30〜0.33  \\
+    定常ゲイン$K_v$ & 0.98 & 0.99 & B．車輪半径に依存（本文）  \\
+    当てはめ誤差（RMSE）[m/s] & 0.135 & 0.111 & 入力が異なる  \\
+    到達した最高速度 [m/s] & 5.82 & 5.96 & 1\,s平均．指令の上限6.0  \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{$v_{\mathrm{int}}$は車体制御系の内部の速度（\ref{sec:ident_test}項）である．$T_{\mathrm{phys}}$の確認性能には，加速と減速の上限4.0\,m/s$^2$（Aの当てはめ値を丸めた値），最高速度6.0\,m/s（上限速度の最大）を用いる．シミュレーションの車両モデルは走行試験Aの列を用い，走行試験Bの列は感度の比較に用いる（\ref{chap:contribution}章）．周回走行（R1，B1）の値：$\tau_v$ 0.24\,s（R1 0.21，B1 0.29），$K_v$ 0.992，和$T_v+\tau_v$ 0.21〜0.29\,s．}
 \end{table}
 
-\begin{table}[H]
-  \centering
-  \caption[Characteristics identified from the lap runs.]{Latency, wheel radius, and detection and stop characteristics from the lap runs.}
-  \label{tab:ident_lap}
-  \small
-  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{0.85}\begin{tabular}{L{5.6cm}L{2.0cm}L{7.0cm}}
-    \toprule
-    項目 & 値 & 備考 \\
-    \midrule
-    \multicolumn{3}{l}{\textbf{認識から指令までの遅延}}\\*
-    平均 & 0.069\,s & R1 0.056\,s，B1 0.086\,s \\
-    95パーセント点 & 0.104\,s & R1 0.076\,s，B1 0.104\,s \\
-    \midrule
-    \multicolumn{3}{l}{\textbf{車輪半径}}\\*
-    採用値 & 0.1265\,m & R1 0.1259〜0.1262，B1 0.1251〜0.1258\,m \\
-    \midrule
-    \multicolumn{3}{l}{\textbf{連続検出の開始距離と停止}（R1の3回の接近の中央値）}\\*
-    コーン（報告距離） & 9.5\,m & 8.0〜10.4\,m \\
-    コーン（実距離） & 17.7\,m & 14.0〜22.7\,m \\
-    パネル（実距離） & 22.9\,m & 20.9〜23.9\,m \\
-    停止点の初回発行距離$d_0$ & 6.98\,m & 4.71〜9.37\,m \\
-    真の停止線に対する行き過ぎ & $+0.22$\,m & $-0.24$〜$+0.65$\,m \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-\end{table}
+
 
 \subsection{並進速度と操舵の応答}
-Fig.~\ref{fig:ident_step_speed}に，上限速度の設定値5.0\,m/sの走行の一部について，並進速度の指令値，車輪速，当てはめたモデルの出力を示す．車輪速は，指令値の変化に対して一定の勾配で上昇または低下したのち，一次遅れで指令値に収束する．むだ時間と一次遅れだけのモデル（図の点線）は，この勾配を表せず，制動と再加速で実測から大きく外れる．指令値を加速の上限と減速の上限で勾配制限した後に一次遅れに入れるモデル（図の破線）は実測と重なり，大きなステップをまとめた二乗平均平方根誤差（RMSE）は前者の4分の1以下になった．当てはめ値をTable~\ref{tab:ident}に示す．むだ時間は探索範囲の下限の0となり，同定できない．ゲインは，当てはめ値（0.965）が過渡の区間を含むため，定常区間から求めた値（後述）を採用する．
+Fig.~\ref{fig:ident_step_speed}に，走行試験Aの上限速度5.0\,m/sの走行の一部について，並進速度の指令値，車輪速，当てはめたモデルの出力を示す．車輪速は，指令値の変化に対して一定の勾配で上昇または低下したのち，一次遅れで指令値に収束する．むだ時間と一次遅れだけのモデル（図の点線）は，この勾配を表せず，制動と再加速で実測から大きく外れる．指令値を加速の上限と減速の上限で勾配制限した後に一次遅れに入れるモデル（図の破線）は実測と重なり，大きなステップをまとめた二乗平均平方根誤差（RMSE）は前者の4分の1以下になった．
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.95\textwidth]{images/ident_step_speed.png}
   \caption[Speed response in the driving test and the fitted models.]{Speed command, wheel speed, and the outputs of the fitted models in the driving test with the upper speed limit set to 5.0\,m/s. The dashed line is the model with the rate limit followed by the first-order lag, and the dotted line is the first-order lag with dead time without the rate limit.}
   \label{fig:ident_step_speed}
 \end{figure}
 
-加速と減速の大きさは事象によって異なる（Table~\ref{tab:ident}の備考）．停止からの全開加速では，傾きのピークが平均4.7\,m/s$^2$に達するが，持続（\ref{sec:ident_test}項）は3.0\,m/s$^2$にとどまる．制動でも，持続はピークより小さい．加速度は速度が上がるほど小さくなる（\ref{sec:phys_limits}項）．ピークは，車体制御系が内部に持つ速度計画の加速度（5.0\,m/s$^2$）をほぼ超えない．
+指令値を入力とする当てはめ（走行試験A）では，むだ時間は探索範囲の下限の0となり，時定数と分離できないため，和$T_v+\tau_v$で扱った．走行試験Bでは，$v_{\mathrm{int}}$を入力とすることでむだ時間が求まり，0.02\,s以下であった．これは$v_{\mathrm{int}}$から車輪速までの区間の値であり，指令から$v_{\mathrm{int}}$までの遅れ（別の事象で約0.06\,s）を含まない．探索の最良は0で，許容範囲は0〜0.02\,s（勾配制限を持つモデルでは0）であり，0.05\,sにするとRMSEが12\,\%大きくなる．むだ時間と時定数は相関し（むだ時間0.05\,sでは時定数が0.28\,s），頑健なのは和0.30〜0.33\,sである．時定数は，走行試験Aの0.21\,sに対して0.30\,sである．0.21\,sは加速の上限を自由にした構造の値であり，指令値を入力とし$v_{\mathrm{int}}$の勾配を5.0\,m/s$^2$に固定した同じ構造の当てはめでは，走行試験Aが0.34\,s，走行試験Bが0.37\,sである．
 
-指令値の変化が小さなステップ（線形域）に限ると，むだ時間と時定数の和は，ゲインを定常ゲインに固定するか自由にするかで異なる（Table~\ref{tab:ident}）．ゲインと時定数は強く相関し，分離できない．定常ゲインは高速ほど下がる傾向があり，設定値6.0\,m/sでは0.96であった．ただし，この速度の定常区間は1つ（約4\,s）であり，速度依存は確定できない．車輪速は各走行で設定値の97\,\%以上に達し，最大は設定値6.0\,m/sの走行の約5.8\,m/s（Table~\ref{tab:ident}）であった．設定値より高い指令は与えていないため，走行可能な最高速度の上限そのものは求められない．
+加速と減速の大きさは事象によって異なり，持続（\ref{sec:ident_test}項）はピークより小さい．加速度は速度が上がるほど小さくなり，走行試験Bでは，$v_{\mathrm{int}}$が車輪速より0.8\,m/s以上先行する区間の加速度の中央値が$3.76-0.31v$であった（走行試験Aは$4.36-0.39v$）．5〜5.5\,m/sでは2.1\,m/s$^2$，6\,m/sへの外挿は1.9\,m/s$^2$である．指令値を0にする制動の持続は，走行試験Bの3.3〜3.8\,m/s$^2$に対して，走行試験Aは3.6\,m/s$^2$である．
 
-Fig.~\ref{fig:ident_step_steer}に，同じ走行の一部について，制限後の目標舵角，従動輪の舵角（実舵角），等価舵角，当てはめたモデルの出力を示す．目標舵角は，\eqnref{eq:steerlimit}の制限により，速度が上がるにつれて下がる．等価舵角と実舵角の当てはめ値をTable~\ref{tab:ident}に示す．等価舵角の当てはめの決定係数は0.97である．むだ時間は，誤差が最小値の5\,\%以内に収まる範囲（許容範囲，Table~\ref{tab:ident}の備考）が広く，精度よくは定まらない．この当てはめは，直進でも右へ回る偏りを，等価舵角の切片（$-1.5^\circ$）として含めている．切片を含めない場合も，時定数は0.02\,s，ゲインは0.02小さくなるだけである．実舵角の時定数は速度とともに増える．
+指令値の変化が小さなステップ（線形域）では，むだ時間と時定数の和は，ゲインを定常ゲインに固定するか自由にするかで異なる．ゲインと時定数は強く相関し，分離できない．定常ゲインは，走行試験Aでは設定値6.0\,m/sの定常区間（約4\,s，1つ）で0.96に下がったが，走行試験Bでは2〜6.1\,m/sのどの速度帯でも0.986〜0.990であり，速度によらなかった．この値は車輪半径0.1265\,mとしたときの値である．車輪の回転数の比（実測／指令）は0.97で，車輪半径の換算比（0.1265\,m／設定値0.124\,m）1.02を掛けると0.99になり，ゲインと車輪半径は分離できない．走行試験Aの0.98との差0.01は，この換算による不確かさ（±0.01）の範囲にある．車輪速は，走行試験Aの各走行で設定値の97\,\%以上に達し，最大は設定値6.0\,m/sの走行の約5.8\,m/sであった．走行試験Bでは，指令6.0\,m/sに対して5.96\,m/s（1\,s平均，瞬時値の最大6.13\,m/s）に達し，飽和の兆候はなかった．上限速度より高い指令は与えていないため，6.0\,m/sは確認した範囲の上限であり，車両の限界ではない．
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.95\textwidth]{images/ident_step_steer.png}
-  \caption[Steering response in the driving test and the fitted model.]{Target steering angle after the limit, caster angle, equivalent steering angle, and the output of the fitted model in the driving test with the upper speed limit set to 5.0\,m/s.}
-  \label{fig:ident_step_steer}
-\end{figure}
+操舵の応答の当てはめ値を付録のTable~\ref{tab:ident2}に，走行試験Aの同じ走行の一部の波形を付録のFig.~\ref{fig:ident_step_steer}に示す．目標舵角は，\eqnref{eq:steerlimit}の制限により，速度が上がるにつれて下がる．等価舵角の当てはめの決定係数は0.97である．むだ時間は，誤差が最小値の5\,\%以内に収まる範囲（許容範囲）が広く，精度よくは定まらない．この当てはめは，直進でも右へ回る偏りを，等価舵角の切片（$-1.5^\circ$）として含めている．切片を含めない場合も，時定数は0.02\,s，ゲインは0.02小さくなるだけである．実舵角の時定数は速度とともに増え，走行試験Aでは3\,m/s設定で0.21\,s，5.5\,m/s設定で0.36\,s，走行試験Bでは4.0\,m/s設定で0.26\,s，6.0\,m/s設定で0.37\,sである．
 
-定常旋回での目標舵角に対する比は，等価舵角では左0.83，右1.13と非対称であるが，実舵角ではほぼ対称である（Table~\ref{tab:ident}）．この差の主因は，目標舵角が0の直進でも右へ回る偏りとみられる．偏りは等価舵角に換算して$-0.8$〜$-1.3^\circ$で，すべての走行で見られた．ただし，直進の区間は短く，合計約5\,sのデータから求めた値である．試験路面には，慣性航法装置の姿勢角の変化から，1$^\circ$程度の傾斜があるとみられる．傾斜による偏りは進行方向によって符号が変わるが，直進の偏りには進行方向によらない成分が残るため，傾斜だけでは説明できず，原因は特定していない．
+定常旋回での目標舵角に対する比は，等価舵角では左0.83，右1.13と非対称であるが，実舵角ではほぼ対称である．走行試験Bでも，等価舵角の比は左0.84，右0.94で，左が小さい．この差には，目標舵角が0の直進でも右へ回る偏りが含まれる．偏りは，走行試験Aでは等価舵角に換算して$-0.8$〜$-1.3^\circ$で，すべての走行で見られた．走行試験Bでは，直進（目標舵角が0）の13区間（計22\,s）すべてで右へ回り，等価舵角は$-0.34^\circ$であった．
 
-周回走行（R1，B1）の閉ループのデータにも同じモデルを当てはめた（Table~\ref{tab:ident}の備考）．並進速度の時定数とゲインは，走行試験の値との差がそれぞれ0.03\,s，0.01で，ほぼ一致した．等価舵角は，時定数は走行試験の値とほぼ一致したが，ゲインは周回走行の方が約10\,\%大きい．周回走行の舵角の指令値は制御器が車両の状態から出した値であり，振幅も小さいため，ゲインと遅れは偏りうる．
+周回走行（R1，B1）の閉ループのデータにも同じモデルを当てはめた（Table~\ref{tab:ident}と付録のTable~\ref{tab:ident2}の注）．並進速度の時定数とゲインは，走行試験Aの値との差がそれぞれ0.03\,s，0.01で，ほぼ一致した．等価舵角は，時定数は走行試験Aの値とほぼ一致したが，ゲインは周回走行の方が約10\,\%大きい．周回走行の舵角の指令値は制御器が車両の状態から出した値であり，振幅も小さいため，ゲインと遅れは偏りうる．
 
 \subsection{認識から指令までの遅延と車輪半径}
-認識から指令までの遅延（カメラ画像の撮影時刻から，その画像に基づく最初の指令値が出力された時刻までの時間）は，平均約0.07\,sであった（Table~\ref{tab:ident_lap}）．撮影から経路生成の出力までは約0.01\,sであり，遅延の大部分はその後の平滑化から指令値の出力までの段で生じる．車輪半径は，自律走行区間のGNSS軌跡の距離と車輪速の積算距離の比から求めると，走行ごとにわずかに異なる（Table~\ref{tab:ident_lap}）．本論文では，周回の距離がGNSS経路長にほぼ一致する0.1265\,mを採用した（周長の差は0.3\,\%以内，Table~\ref{tab:runs}）．採用値と距離比による値との差（最大約1\,\%）は，並進のゲインに最大$\pm 0.01$の不確かさを与える．
+認識から指令までの遅延（カメラ画像の撮影時刻から，その画像に基づく最初の指令値が出力された時刻までの時間）は，平均約0.07\,sであった（付録のTable~\ref{tab:ident_lap}）．撮影から経路生成の出力までは約0.01\,sであり，遅延の大部分はその後の平滑化から指令値の出力までの段で生じる．車輪半径は，自律走行区間のGNSS軌跡の距離と車輪速の積算距離の比から求めると，走行ごとにわずかに異なる（付録のTable~\ref{tab:ident_lap}）．本論文では，周回の距離がGNSS経路長にほぼ一致する0.1265\,mを採用した（車輪速の積算による周長とGNSS経路長の差は，R1で0.1\,\%，B1で0.3\,\%であり，R1は260.0\,mと259.8\,m，B1は258.3\,mと257.5\,mである）．採用値と距離比による値との差（最大約1\,\%）は，並進のゲインに最大$\pm 0.01$の不確かさを与える．
 
 \subsection{信号とコーンの検出と停止}
-コーンの連続検出の開始距離の中央値は，報告距離で9.5\,m，実距離で17.7\,mであった（Table~\ref{tab:ident_lap}）．報告距離は遠方ほど実距離より小さく出る．Fig.~\ref{fig:detection_distance}とTable~\ref{tab:range}に，コーンの実距離に対する報告距離を示す．報告距離と実距離は6\,m付近まで一致し，実距離20\,m以遠では約0.5倍に縮む．近距離での一致は，実距離の基準を6\,m未満の検出から作っているための定義上のものである．この比は，シミュレーションの検出モデル（\ref{sec:sil_detect}項）に用いる．パネルの連続検出の開始距離は，報告距離が8\,mより遠いと使えないため，実距離のみを示す．
+コーンの連続検出の開始距離の中央値は，報告距離で9.5\,m，実距離で17.7\,mであった（付録のTable~\ref{tab:ident_lap}）．報告距離は遠方ほど実距離より小さく出る．付録のFig.~\ref{fig:detection_distance}とTable~\ref{tab:range}に，コーンの実距離に対する報告距離を示す．報告距離と実距離は6\,m付近まで一致し，実距離20\,m以遠では約0.5倍に縮む．この比は，シミュレーションの検出モデル（\ref{sec:sil_detect}項）に用いる．パネルの連続検出の開始距離は，報告距離が8\,mより遠いと使えないため，実距離のみを示す．停止点の初回発行距離$d_0$の中央値は6.98\,mであった（付録のTable~\ref{tab:ident_lap}）．初回の発行から停止までの走行距離は，$d_0$より6〜10\,m長かった．報告距離が遠方で小さく出るため，初回の停止点が真の位置より手前に出たことによる．停止線を越えた量を正とした行き過ぎは，3回とも$\pm 0.7$\,m以内に収まった．以上はR1の値であり，上限速度を変えた9本の信号停止は\ref{sec:stop_real}節に示す．
 
-停止点の初回発行距離$d_0$の中央値は約7.0\,mであった（Table~\ref{tab:ident_lap}）．初回の発行から停止までの走行距離は，$d_0$より6〜10\,m長かった．報告距離が遠方で小さく出るため，初回の停止点が実際より手前に出たことによる．真の停止線は，停止時のコーンまでの前方距離から，停止点の位置（コーンの3.3\,m手前）を引いて求めた．停止点は毎フレーム更新されるため，停止線を越えた量を正とした行き過ぎは，3回とも$\pm 0.7$\,m以内に収まった．
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.55\textwidth]{images/detection_distance.png}
-  \caption[Reported distance of the cone versus its true distance.]{Reported distance of the cone versus its true distance in R1 (three approaches, 314 detections). The dashed line is $y=x$.}
-  \label{fig:detection_distance}
-\end{figure}
-
-\begin{table}[H]
-  \centering
-  \caption{Ratio of the reported distance to the true distance of the cone.}
-  \label{tab:range}
-  \small
-  \begin{lrbox}{\tblbox}\begin{tabular}{rrrrrr}
-    \toprule
-    \shortstack[r]{実距離の区間\\{[m]}} & サンプル数 & \shortstack[r]{実距離の\\中央値 {[m]}} & \shortstack[r]{報告距離の\\中央値 {[m]}} & \shortstack[r]{報告／実の\\中央値} & \shortstack[r]{報告／実の\\10〜90パーセント点} \\
-    \midrule
-    2〜4 & 80 & 3.5 & 3.5 & 1.00 & 0.98〜1.03 \\
-    4〜6 & 62 & 4.8 & 4.8 & 0.97 & 0.91〜1.02 \\
-    6〜8 & 25 & 6.6 & 5.7 & 0.84 & 0.83〜0.87 \\
-    8〜10 & 15 & 9.0 & 6.8 & 0.76 & 0.74〜0.80 \\
-    10〜13 & 21 & 11.6 & 7.9 & 0.70 & 0.66〜0.73 \\
-    13〜17 & 26 & 15.1 & 8.6 & 0.61 & 0.56〜0.63 \\
-    17〜22 & 52 & 20.6 & 11.1 & 0.55 & 0.53〜0.58 \\
-    22〜30 & 29 & 25.0 & 12.3 & 0.49 & 0.44〜0.52 \\
-    30〜40 & 4 & 34.3 & 18.2 & 0.52 & 0.51〜0.59 \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{対象は，初回の停止点の25\,s前から停止までに，真の方位$\pm 2^\circ$以内で検出されたコーンである．サンプルは3回の接近の同一物体であり，フレーム間は独立でない．}
-\end{table}
-
-\subsection{経路生成の誤差}
+\subsection{経路生成の揺らぎ}
 \label{sec:patherr_result}
-経路生成の出力（目標経路）の誤差をTable~\ref{tab:patherr}とFig.~\ref{fig:path_error}に示す．誤差は，各行の横位置から，前後1\,sの他のフレームの出力を現在の車両座標系に揃えた中央値を引いた値である．先端以外の行の誤差はラプラス尺度で0.045\,mと小さく，先端（各フレームの最後の行）では0.28\,mと大きい．Fig.~\ref{fig:path_error}では，前方約6\,mより遠方で誤差が大きくなる．誤差は，先端とそれ以外の行のいずれも，連続するフレーム間で正の相関を持つ．認識距離（経路生成の出力の最遠点の前方距離）の中央値は約8.9\,mで，6\,m未満のフレームが23.0\,\%あった．これらは近傍のフレームから作った基準との差であるため，1\,sより遅い誤差は含まれず，誤差の大きさと相関は過小に出る．この結果は，シミュレーションの経路生成のモデル（\ref{sec:sil_path}項）に用いる．
+経路生成の出力の揺らぎを付録のTable~\ref{tab:patherr}とFig.~\ref{fig:path_error}に示す．揺らぎは，各行の横位置から，前後1\,sの他のフレームの出力を現在の車両座標系に揃えた中央値を引いた値である．R1とB1では，先端以外の行の揺らぎはラプラス尺度で0.045\,mと小さく，先端（各フレームの最後の行）では0.276\,mと大きい．付録のFig.~\ref{fig:path_error}では，前方約6\,mより遠方で揺らぎが大きくなる．揺らぎは，先端とそれ以外の行のいずれも，連続するフレーム間で正の相関を持つ．認識距離（経路生成の出力の最遠点の前方距離）の中央値は約8.9\,mで，6\,m未満のフレームが23.0\,\%あった．これらは近傍のフレームから作った参照値との差であるため，1\,sより遅い成分は含まれず，大きさと相関は過小に出る．\ref{chap:contribution}章のシミュレーションの経路生成のモデル（\ref{sec:sil_path}項）は，R1とB1の値（付録のTable~\ref{tab:patherr}のR1+B1）で構成した．上限速度を変えた9本に同じ方法を適用すると，先端以外の行のラプラス尺度は，赤で0.048，0.064，0.067\,m，青で0.060，0.067，0.075\,m（上限速度4.0，5.0，6.0\,m/s）と，上限速度とともに増える．認識距離が6\,m未満のフレームの割合は，赤で0.0〜0.2\,\%，青で4.3〜5.7\,\%である（付録のTable~\ref{tab:patherr_1119}）．シミュレーションの経路生成のモデルをR1とB1の値で構成するのは，上限速度を変えた9本を\ref{chap:contribution}章の検証に用い，同定には用いないためである．
 
-\begin{table}[H]
-  \centering
-  \caption{Error of the generated path (lateral position, R1 and B1).}
-  \label{tab:patherr}
-  \small
-  \begin{lrbox}{\tblbox}\begin{tabular}{lrrr}
-    \toprule
-    項目 & R1 & B1 & R1+B1 \\
-    \midrule
-    \multicolumn{4}{l}{\textbf{先端以外の行}} \\
-    ラプラス尺度 [m] & 0.038 & 0.053 & 0.045 \\
-    95パーセント点（絶対値）[m] & 0.109 & 0.186 & 0.138 \\
-    相関$\rho$（連続フレーム） & 0.63 & 0.68 & 0.67 \\
-    白色成分の標準偏差 [m] & 0.021 & 0.039 & 0.031 \\
-    \midrule
-    \multicolumn{4}{l}{\textbf{先端（最後の行）}} \\
-    ラプラス尺度 [m] & 0.204 & 0.358 & 0.276 \\
-    95パーセント点（絶対値）[m] & 0.91 & 1.28 & 1.09 \\
-    相関$\rho$（連続フレーム） & 0.83 & 0.72 & 0.74 \\
-    \midrule
-    \multicolumn{4}{l}{\textbf{認識距離（経路生成の出力の最遠点の$x$）}} \\
-    中央値 [m] & 8.85 & 8.87 & 8.86 \\
-    25パーセント点 [m] & 8.80 & 6.11 & 7.61 \\
-    6\,m未満のフレームの割合 [\%] & 21.3 & 24.8 & 23.0 \\
-    6\,m未満が続く長さ（平均／最大）[フレーム] & 16.7／64 & 9.8／56 & 12.2／64 \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{対象は，自律走行区間のうち車輪速が1.5\,m/s以上のフレーム（R1 2983，B1 2672）である．サンプル数は，先端以外の行がR1 58{,}670，B1 52{,}450，先端がR1 2867，B1 2552である．$\rho$は連続するフレーム（66.7\,ms）の相関である．R1+B1は2本の誤差をまとめて計算した．}
-\end{table}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.75\textwidth]{images/path_error.png}
-  \caption[Lateral error of the generated path versus forward distance.]{Lateral error of the generated path versus forward distance in R1 and B1: median (solid) and 5th and 95th percentiles (dashed).}
-  \label{fig:path_error}
-\end{figure}
 
-\subsection{物理限界}
+\subsection{確認性能}
 \label{sec:phys_limits}
-走行可能な最高速度，加速と減速の上限，横加速度の上限は，周回走行の記録からは同定できない（\ref{sec:identification}節）．そこで，走行試験で同定または確認した値をTable~\ref{tab:phys}に示し，物理限界として用いる．
+確認した最高速度，加速と減速の上限，横加速度は，周回走行の記録からは同定できない（\ref{sec:identification}節）ため，走行試験で同定または確認した値を，Table~\ref{tab:phys}に示す確認性能として用いる．確認性能は，試験または周回走行で到達を確認した最大の値であり，車両の限界を表さない．
 
-加速と減速の上限は，勾配制限を持つモデルの当てはめ値（Table~\ref{tab:ident}）を丸めた値であり，事象ごとのピークと持続の間にある．加速は速度とともに下がり，勾配の上限が速度に比例して下がるモデルの当てはめでは，6\,m/sで約2.0\,m/s$^2$になる．ただし，加速の上限を変えても基準時間はほとんど変わらない（Table~\ref{tab:decomp_sens}）ため，一定値を用いる．走行可能な最高速度は，試験で到達を確認した速度である．設定値より高い指令は与えていないため，この値は上限そのものではない．
+加速と減速の上限は，勾配制限を持つモデルの当てはめ値（Table~\ref{tab:ident}）を丸めた値であり，事象ごとのピークと持続の間にある．加速は速度とともに下がり，6\,m/sで約2.0\,m/s$^2$になる．確認した最高速度は，試験で到達を確認した速度であり，走行試験Aは5.82\,m/s，走行試験Bは5.96\,m/s，周回走行は6.14\,m/s（車輪半径0.1265\,mによる換算）である．Table~\ref{tab:phys}の値6.0\,m/sは上限速度の最大であり，周回走行の実測の最高速度は，この値を0.14\,m/s上回る．
 
-横加速度の上限6.0\,m/s$^2$は仮定値である．走行試験の定常旋回では，滑りと車体の傾きの条件（\ref{sec:ident_test}項）を保ったまま，右旋回で$vr$が4.8\,m/s$^2$に達した．$v^2\tan\delta_{\mathrm{c}}/L$による値は，高速の旋回で従動輪の舵角が等価舵角より大きいために実際の横加速度より大きく出るので，確認できた範囲には$vr$の値をとる．Fig.~\ref{fig:ident_lateral}に，区間ごとの値（区間内の平均）を速度に対して示す．横加速度は速度とともに増え，条件を破って頭打ちになった窓は見られず，上限には達していない．制限の横加速度3.5\,m/s$^2$（\eqnref{eq:steerlimit}）は指令側の制限であって，車両の限界ではない．左旋回の$vr$は右旋回より小さい（Table~\ref{tab:ident}）．直進でも右へ回る偏りがこの左右差の約半分を説明するとみられるが，残りの原因は特定していない．
+確認した横加速度は，走行試験Aの定常旋回で，滑りと車体の傾きの条件（\ref{sec:ident_test}項）を保ったまま，右旋回で$vr$が4.8\,m/s$^2$に達した（左旋回は2.2〜3.0\,m/s$^2$）．$v^2\tan\delta_{\mathrm{c}}/L$による値は，高速の旋回で従動輪の舵角が等価舵角より大きいために$vr$による値より大きく出るので，確認できた範囲には$vr$の値をとる．走行試験Bの旋回は，目標舵角が$a_{\mathrm{lim}}=3.0$\,m/s$^2$で制限されており，定常旋回の横加速度は，従動輪の舵角から最大3.1，左右の駆動輪の回転速度の差から求めたヨーレートから最大2.9\,m/s$^2$で，区間内の並進速度の低下は$-0.2$〜$+0.35$\,m/s，ロールの振れは$2^\circ$未満であり，破綻は見られなかった．周回走行では，0.5\,s平均の$vr$が，B1の左旋回で3.7，上限速度を変えた9本で3.4\,m/s$^2$に達した．$T_{\mathrm{phys}}$の横加速度には，試験で確認した最大の4.8\,m/s$^2$（右旋回）を用いる．左旋回の確認値は，0.5\,s平均で3.7\,m/s$^2$である．確認した横加速度を3.4〜6.0\,m/s$^2$の範囲で変えても内訳の結論が変わらないことは，\ref{sec:decomp_result}節に示す．定常旋回の区間ごとの値は付録のFig.~\ref{fig:ident_lateral}に示す．
 
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
-  \caption{Physical limits used for the lap time breakdown.}
+  \caption{Confirmed performance used for the lap time breakdown.}
   \label{tab:phys}
   \small
-  \begin{lrbox}{\tblbox}\begin{tabular}{L{3.4cm}L{2.0cm}L{9.3cm}}
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{3.2cm}L{1.8cm}L{9.7cm}}
     \toprule
-    項目 & 値 & 確認できた範囲 \\
+    項目 & 値 & 確認した範囲 \\
     \midrule
-    走行可能な最高速度 & 6.0\,m/s & 走行試験：6.0\,m/s（瞬時値の最大．1\,s平均は5.8\,m/s．設定値で頭打ち）\newline 周回走行：4.6\,m/s以上（B1の最大） \\
-    加速の上限 & 4.0\,m/s$^2$ & 走行試験：ピーク平均4.7\,m/s$^2$（最大4.9），持続3.0\,m/s$^2$\newline 周回走行：$+2.8$\,m/s$^2$以上 \\
-    減速の上限 & 4.0\,m/s$^2$ & 走行試験：ピーク平均4.2\,m/s$^2$（最大5.0），持続3.6\,m/s$^2$\newline 周回走行：$-4.0$\,m/s$^2$以上 \\
-    横加速度の上限 & 6.0\,m/s$^2$ & 走行試験：4.8\,m/s$^2$以上（$vr$．従動輪の舵角からは5.2\,m/s$^2$）\newline 周回走行：4.55\,m/s$^2$以上（B1の最大） \\
+    確認した最高速度 & 6.0\,m/s & 走行試験A：5.82\,m/s（1\,s平均．瞬時値の最大6.0）\newline 走行試験B：5.96\,m/s（1\,s平均．瞬時値の最大6.13）\newline 周回走行：6.14\,m/s（R60，B60a，B60bの最大）．B1は4.6\,m/s \\
+    確認した加速の上限 & 4.0\,m/s$^2$ & 走行試験A：ピーク平均4.7\,m/s$^2$（最大4.9），持続3.0\,m/s$^2$\newline 走行試験B：ピーク2.3〜4.8\,m/s$^2$\newline 周回走行：$+2.8$\,m/s$^2$以上（B1） \\
+    確認した減速の上限 & 4.0\,m/s$^2$ & 走行試験A：ピーク平均4.2\,m/s$^2$（最大5.0），持続3.6\,m/s$^2$\newline 走行試験B：持続3.3〜3.8\,m/s$^2$，ピーク3.8〜4.1\,m/s$^2$\newline 周回走行：$-4.0$\,m/s$^2$以上（B1） \\
+    確認した横加速度$a_{y,\mathrm{conf}}$ & 4.8\,m/s$^2$ & 走行試験A：4.8\,m/s$^2$（$vr$，右旋回，1\,s平均．従動輪の舵角からは5.2，左旋回の$vr$は2.2〜3.0）\newline 走行試験B：3.1\,m/s$^2$（従動輪の舵角から．$a_{\mathrm{lim}}=3.0$の制限の範囲）\newline 周回走行（0.5\,s平均の$vr$）：B1の左旋回で3.7，上限速度を変えた9本で3.4\,m/s$^2$（生値の最大はB1が4.55，9本が3.9） \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{周回走行の確認できた範囲は実際に到達した最大値であり，加速は0.5\,s差分の最大である．最高速度は，車輪速を車輪半径0.1265\,mで換算した値である．}
+  \tblnote{周回走行の加速は，B1の0.5\,s差分の最大である．最高速度は，車輪速を車輪半径0.1265\,mで換算した値であり，6.0\,m/sは上限速度の最大である．$v_{\mathrm{cap}}=6.0$\,m/sの走行では，$\Delta T_{\mathrm{cap}}$は定義により0である．}
 \end{table}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.75\textwidth]{images/ident_lateral.png}
-  \caption[Lateral acceleration in the steady turns versus speed.]{Lateral acceleration in the steady turns versus speed. Each point is the mean over a steady-turn section, obtained from the caster angle ($v^2\tan\delta_{\mathrm{c}}/L$) and from the yaw rate ($vr$) for left and right turns. The dashed line is the lateral acceleration at the limit of the target steering angle (Eq.~(\ref{eq:steerlimit}), $a_{\mathrm{lim}}=3.5$\,m/s$^2$).}
-  \label{fig:ident_lateral}
-\end{figure}
 
 \section{周回走行の結果}
 \label{sec:run4}
-R1とB1の解析範囲について，ラップタイムと走行の統計を示す．ラップタイムは，自律走行の開始点を通り進行方向に直交する基準線をGNSSの軌跡が通過した時刻の差とした．解析範囲は，R1は3周目の基準線の通過まで，B1は3周目の周長の97.5\,\%まで（その先で自律走行を終了したため）である．Table~\ref{tab:laptimes}に各周のラップタイムを示す．1周目は静止発進を含む．R1は各周に信号停止を1回ずつ含み，周ごとのラップタイムの差は信号停止による時間差（\ref{sec:decomp_result}節）に対応する．これを除いたラップタイムは65.4〜65.9\,sで，3周でほぼ等しい．B1は信号停止がなく，1周目と2周目の差は0.8\,sである．
+Table~\ref{tab:laptimes}に，完全な周のラップタイムを示す．上限速度を変えた9本の2周目のラップタイムは，赤で77.4，62.7，57.1\,s（上限速度4.0，5.0，6.0\,m/s），青で65.9〜66.5，56.5〜56.8，50.8〜52.3\,sであり，上限速度が高いほど短い．赤は各条件1本であり，周ごとのラップタイムの最大と最小の差は，R40で0.1\,s，R50で1.5\,s，R60で1.9\,sである（Table~\ref{tab:laptimes}の右端．1周目の静止発進を含み，R60の2周目と3周目だけでは1.5\,sである）．この差は，赤の上限速度の段階の間の差（4.0から5.0\,m/sまで14.7\,s，5.0から6.0\,m/sまで5.6\,s）より小さい．同じ条件で2本走行した青では，2周目のラップタイムの差は，上限速度4.0，5.0，6.0\,m/sで0.6，0.3，1.5\,sであった（B40aとB40b，B50aとB50b，B60aとB60b）．以下では，赤は周ごとの差と上限速度の段階間の差の大小，青は2本の差と段階間の差（4.0から5.0\,m/sまで9.5\,s，5.0から6.0\,m/sまで5.2\,s）の大小に照らして，差を述べる．
 
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
   \caption{Lap times measured by the crossing of the start line by the GNSS trajectory.}
   \label{tab:laptimes}
   \small
-  \begin{lrbox}{\tblbox}\begin{tabular}{llrrrl}
+  \begin{lrbox}{\tblbox}\begin{tabular}{llrrrrr}
     \toprule
-    走行 & コース（上限速度の設定値） & 1周目 [s] & 2周目 [s] & 3周目 [s] & 備考 \\
+    走行 & コース & \shortstack[r]{$v_{\mathrm{cap}}$\\{[m/s]}} & 1周目 [s] & 2周目 [s] & 3周目 [s] & \shortstack[r]{最大$-$最小\\{[s]}} \\
     \midrule
-    R1 & 赤（4.0\,m/s） & 72.3 & 77.3 & 69.4 & 各周に信号停止1回 \\
-    B1 & 青（4.5\,m/s） & 60.5 & 59.8 & (58.4) & 3周目は周長の97.5\,\% \\
+    R40 & 赤 & 4.0 & 77.5 & 77.4 & --- & 0.1 \\
+    R50 & 赤 & 5.0 & 64.2 & 62.7 & --- & 1.5 \\
+    R60 & 赤 & 6.0 & 59.0 & 57.1 & 58.5 & 1.9 \\
+    B40a & 青 & 4.0 & 66.7 & 66.5 & --- & 0.3 \\
+    B40b & 青 & 4.0 & 66.8 & 65.9 & --- & 0.9 \\
+    B50a & 青 & 5.0 & 57.4 & 56.5 & --- & 0.9 \\
+    B50b & 青 & 5.0 & 57.5 & 56.8 & 58.0 & 1.1 \\
+    B60a & 青 & 6.0 & 51.5 & 50.8 & 51.4 & 0.8 \\
+    B60b & 青 & 6.0 & 52.9 & 52.3 & --- & 0.6 \\
+    \midrule
+    R1 & 赤 & 4.0 & 72.3 & 77.3 & 69.4 & 7.9 \\
+    B1 & 青 & 4.5 & 60.5 & 59.7 & --- & 0.8 \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{括弧内は部分周の時間であり，他の周と直接は比べられない．}
+  \tblnote{---は完全な周でなく，ラップタイムに用いない．1周目は静止発進を含む．最大$-$最小は，完全な周のラップタイムの最大と最小の差である．赤の走行は各周に信号停止を1回含み，R1の周ごとの差は信号停止の時間（静止の時間）による．最下段の2本（R1，B1）は設定の異なる以前の走行である．}
 \end{table}
 
-Table~\ref{tab:runstats}に，解析範囲全体の速度，横偏差，舵角の指令値の統計を示す．横偏差は，参照経路（平滑化後の経路）に対する値であり，コースに対する独立な基準ではない．実測速度の中央値は，いずれも上限速度の設定値の約99\,\%であった．横偏差と舵角の指令値の変化率は，いずれもB1の方が大きい．Fig.~\ref{fig:run_ts}に，速度，横偏差，舵角の指令値の時系列を，Fig.~\ref{fig:run_topdown}にGNSSの軌跡を示す．B1は，トポロジカルマップから生成した経路選択の指示により，交差点を1周あたり3回（左，右，左）通過した．B1の速度の低下と，横偏差，舵角の指令値の変動は，この交差点の区間に集中している．
+Fig.~\ref{fig:speed_vs_s}に，2周目の車輪速を，周回の位置に対して上限速度ごとに重ねて示す．走行中（車輪速が上限速度の半分を超える間）の速度の中央値は，赤で3.97，4.96，5.85\,m/s，青で3.97（2本とも），4.93と4.92，5.76\,m/s（2本とも）であり，上限速度の96〜99\,\%であった．上限速度4.0\,m/sでは，赤の信号停止と青の分岐・交差点のカーブを除いて，速度は4.0\,m/s付近で一定である．5.0，6.0\,m/sでは，カーブごとに速度が下がり，直線で上限速度に戻る．青の灰色の帯の区間の最小速度は，上限速度によらず，左カーブで2.2〜2.7\,m/s，右カーブで3.5〜3.9\,m/s，交差点の左カーブで2.1〜3.3\,m/sである．走行距離から求めた周長は，上限速度とともに長くなる．赤は261.0，261.8，263.0\,m，青は258.7〜258.8，258.7〜259.8，260.3〜261.6\,mであり，赤で2.0\,m，青で約2\,m長い．この増加は追従による膨らみであり，基準時間$T_{\mathrm{phys}}$に含まれる（2周目で赤0.2\,s，青0.4\,s）．
 
-\begin{table}[H]
+\begin{figure}[!htbp]
   \centering
-  \caption{Statistics of the autonomous driving runs.}
-  \label{tab:runstats}
-  \small
-  \begin{lrbox}{\tblbox}\begin{tabular}{lrrrr}
-    \toprule
-    走行 & \shortstack[r]{速度の中央値\\{[m/s]}} & \shortstack[r]{横偏差の\\95パーセント点 {[m]}} & \shortstack[r]{横偏差の\\最大 {[m]}} & \shortstack[r]{舵角の指令値の\\絶対変化率 {[$^\circ$/s]}} \\
-    \midrule
-    R1 & 3.97 & 0.26 & 0.48 & 4.8 \\
-    B1 & 4.45 & 0.37 & 0.86 & 8.9 \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{速度は車輪速による．横偏差は絶対値で示す．舵角の指令値の絶対変化率は，連続する2つの指令値の差を制御周期（0.05\,s）で割った絶対値の平均である．}
-\end{table}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.98\textwidth]{images/run_timeseries.png}
-  \caption[Speed, lateral deviation, and steering command in the autonomous runs.]{Speed (command and measured), lateral deviation from the reference path, and steering command (left: R1, red course, upper speed limit 4.0\,m/s; right: B1, blue course, upper speed limit 4.5\,m/s).}
-  \label{fig:run_ts}
+  \includegraphics[width=0.95\textwidth]{images/field_speed_vs_s.png}
+  \caption[Wheel speed versus position along the lap in the second lap.]{Wheel speed versus position along the lap in the second lap for the upper speed limits of 4.0, 5.0, and 6.0\,m/s (a: red course, b: blue course). In (b), solid lines are runs a and dashed lines are runs b. The gray bands in (b) are the left curve (branch), the right curve, and the left curve at the intersection.}
+  \label{fig:speed_vs_s}
 \end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.98\textwidth]{images/run_topdown.png}
-  \caption[GNSS trajectories of the autonomous runs.]{GNSS trajectories of the autonomous segments over the lane lines (left: R1, red course; right: B1, blue course).}
-  \label{fig:run_topdown}
-\end{figure}
-
-R1の信号停止の保持時間（車輪速が0.5\,m/s未満の時間）は，停止ごとに2.7〜9.7\,sと異なる．保持時間は主に信号の表示時間による（再発進は緑のパネルの最初の検出から約0.7\,s後）．3回目の停止は，停止点の発行の途切れが最も長く（最大2.0\,s），行き過ぎも最も大きかった．
 
 \section{ラップタイムの内訳}
 \label{sec:decomp_result}
-\ref{sec:decomposition}節の方法をR1とB1に適用した結果をTable~\ref{tab:decomp}に，1周あたりの内訳と周ごとの内訳をFig.~\ref{fig:decomp}に示す．物理限界はTable~\ref{tab:phys}の値とし，速度計画の設定値はTable~\ref{tab:params}の値とした．Table~\ref{tab:decomp}の1周あたりの値は合計を周回数で割った平均であり，Table~\ref{tab:laptimes}の周ごとのラップタイムとは一致しない．Fig.~\ref{fig:decomp_ts}に，R1の実測速度と，内訳の計算に用いた各速度列を走行距離に対して示す．
+\ref{sec:decomposition}節の方法を，上限速度を変えた9本の2周目に適用した結果をTable~\ref{tab:decomp_all}とFig.~\ref{fig:decomp_bars}に示す．確認性能はTable~\ref{tab:phys}の値とし，速度計画の設定値は記録した値（$a_{y,\max}=2.0$\,m/s$^2$，$a_{x,\max}=3.0$\,m/s$^2$，分岐での速度抑制4.0\,m/s）とした．各項は，計画された速度から計算される項（左の5列）と，実測の速度に依存する項（次の2列）に分け，右端に経路生成と速度の追従に由来する分を示す．以前の走行（R1，B1）の内訳は付録のTable~\ref{tab:decomp}，9本の周ごとの内訳は付録のTable~\ref{tab:decomp_laps_1119}に示す．
 
-\begin{table}[H]
+\begin{table}[!htbp]
   \centering
-  \caption[Breakdown of the lap time in the real runs.]{Breakdown of the lap time (signed, in seconds; totals over the analyzed laps and means per lap).}
-  \label{tab:decomp}
+  \caption[Breakdown of the lap time of the second lap in the nine runs.]{Breakdown of the lap time of the second lap in the nine runs (signed, in seconds). Left: terms computed from the planned speeds. Middle: terms depending on the measured speed. Right: the sum $\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$.}
+  \label{tab:decomp_all}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{lrrrrrrrrrr}
+    \toprule
+    & & & \multicolumn{5}{c}{計画された速度から計算} & \multicolumn{2}{c}{実測に依存} & \\
+    \cmidrule(lr){4-8}\cmidrule(lr){9-10}
+    走行 & \shortstack[r]{$v_{\mathrm{cap}}$\\{[m/s]}} & $T_{\mathrm{lap}}$ & $T_{\mathrm{phys}}$ & $\Delta T_{\mathrm{cap}}$ & $\Delta T_{\mathrm{plan}}$ & $\Delta T_{\mathrm{branch}}$ & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\$-\Delta T_{\mathrm{branch}}$} & $\Delta T_{\mathrm{track}}$ & $\Delta T_{\mathrm{stop}}$ & \shortstack[r]{経路・\\追従の和} \\
+    \midrule
+    R40 & 4.0 & 77.4 & 43.5 & $+21.7$ & 0.0 & 0.0 & $+0.1$ & $+0.4$ & $+11.8$ & $+0.4$ \\
+    R50 & 5.0 & 62.7 & 43.6 & $+8.7$ & $+0.1$ & 0.0 & $+1.1$ & $-0.7$ & $+9.8$ & $+0.5$ \\
+    R60 & 6.0 & 57.1 & 43.6 & 0.0 & $+1.0$ & 0.0 & $+2.3$ & $-1.7$ & $+11.7$ & $+0.7$ \\
+    \midrule
+    B40a & 4.0 & 66.5 & 43.4 & $+21.3$ & $+0.6$ & 0.0 & $+0.9$ & $+0.3$ & 0.0 & $+1.2$ \\
+    B40b & 4.0 & 65.9 & 43.3 & $+21.3$ & $+0.5$ & $-0.2$ & $+0.5$ & $+0.1$ & $+0.5$ & $+0.5$ \\
+    B50a & 5.0 & 56.5 & 43.3 & $+8.4$ & $+1.5$ & $+2.0$ & $+1.6$ & $-0.3$ & 0.0 & $+1.3$ \\
+    B50b & 5.0 & 56.8 & 43.5 & $+8.3$ & $+1.8$ & $+1.9$ & $+1.7$ & $-0.4$ & 0.0 & $+1.3$ \\
+    B60a & 6.0 & 50.8 & 43.6 & 0.0 & $+3.8$ & $+2.9$ & $+2.5$ & $-2.0$ & 0.0 & $+0.5$ \\
+    B60b & 6.0 & 52.3 & 44.0 & 0.0 & $+3.3$ & $+3.1$ & $+4.1$ & $-2.6$ & $+0.4$ & $+1.5$ \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{各項の和は\eqnref{eq:decomp}により$T_{\mathrm{lap}}$に一致する．表示は丸めているため，和が0.1\,s程度ずれることがある．$v_{\mathrm{cap}}=6.0$\,m/sの$\Delta T_{\mathrm{cap}}$は定義により0である．B40bとB60bの$\Delta T_{\mathrm{stop}}$は，信号のない青コースで停止点が短時間発行され，速度が2.2〜3.4\,m/sまで下がったことによる．R60の$\Delta T_{\mathrm{stop}}$には，信号停止（11.2\,s）のほかに，停止点が短時間発行された区間（0.5\,s）が含まれる．$v_{\mathrm{cap}}=4.0$\,m/sの青の$\Delta T_{\mathrm{branch}}$は，抑制値が上限速度と等しく，定義により0の近くになる．}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{images/field_decomp_bars.png}
+  \caption[Breakdown of the lap time of the second lap in the nine runs.]{Breakdown of the lap time of the second lap in the nine runs, in the order of the upper speed limit $v_{\mathrm{cap}}$. Negative terms are drawn downward, and the black line on each bar is the lap time $T_{\mathrm{lap}}$ (the bar top equals $T_{\mathrm{lap}}$ plus the magnitude of the negative terms). Numbers inside the bars are the values of 4.5\,s or more.}
+  \label{fig:decomp_bars}
+\end{figure}
+
+上限速度を4.0から6.0\,m/sに上げると，2周目のラップタイムは赤で20.4\,s，青で14.7\,s（2本の平均）短くなる（Table~\ref{tab:main_change}．差は丸める前の値から計算した）．この短縮は，$\Delta T_{\mathrm{cap}}$の減少（赤21.7\,s，青21.3\,s）より，赤で1.4\,s，青で6.6\,s小さい．$\Delta T_{\mathrm{cap}}$が$v_{\mathrm{cap}}=6.0$\,m/sで0になるのは定義による．この差を項に分けると，青では，速度計画の設定値を変えると変わる分が，$\Delta T_{\mathrm{plan}}$で$+3.0$\,s，$\Delta T_{\mathrm{branch}}$で$+3.1$\,s，両者の和で$+6.1$\,sあり，差6.6\,sの大部分を占める．$\Delta T_{\mathrm{plan}}$は速度計画の横加速度の上限$a_{y,\max}=2.0$\,m/s$^2$による．$\Delta T_{\mathrm{branch}}$は分岐での速度抑制4.0\,m/sによるが，記録した速度計画の速度から計算するため，経路生成の出力と指示の区間にも依存する．このほか$T_{\mathrm{phys}}$が周長の増加で$+0.4$\,s増える．これに対して，経路生成と速度の追従に由来する分$\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$は$+0.14$\,s，$\Delta T_{\mathrm{stop}}$は$-0.05$\,sしか変わらない．赤では，差1.4\,sのうち，速度計画の設定値を変えると変わる分が$\Delta T_{\mathrm{plan}}$の$+1.0$\,s，$T_{\mathrm{phys}}$が$+0.2$\,s，経路生成と速度の追従に由来する分が$+0.2$\,s，$\Delta T_{\mathrm{stop}}$が$-0.03$\,sである．したがって，上限速度6.0\,m/sまでの範囲で，上限速度を上げたときの短縮を減らしているのは，速度計画の設定値（$a_{y,\max}$と分岐での速度抑制）による分であり，経路生成と速度の追従に由来する時間差の増加は0.1〜0.2\,sである．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Change of the lap time breakdown from 4.0 to 6.0 m/s.]{Change of the lap time breakdown of the second lap when the upper speed limit is raised from 4.0 to 6.0\,m/s (in seconds, two decimals; the blue course is the mean of two runs; the change is computed before rounding).}
+  \label{tab:main_change}
+  \small
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{llrrrrrr}
+    \toprule
+    & & \multicolumn{3}{c}{赤} & \multicolumn{3}{c}{青} \\
+    \cmidrule(lr){3-5}\cmidrule(lr){6-8}
+    項 & 区分 & 4.0\,m/s & 6.0\,m/s & 変化 & 4.0\,m/s & 6.0\,m/s & 変化 \\
+    \midrule
+    $T_{\mathrm{lap}}$ &  & 77.41 & 57.06 & $-20.35$ & 66.17 & 51.52 & $-14.65$ \\
+    \midrule
+    $T_{\mathrm{phys}}$ & 確認性能 & 43.47 & 43.65 & $+0.18$ & 43.35 & 43.78 & $+0.43$ \\
+    $\Delta T_{\mathrm{cap}}$ & 上限速度 & 21.74 & 0.00 & $-21.74$ & 21.27 & 0.00 & $-21.27$ \\
+    $\Delta T_{\mathrm{plan}}$ & 計画の設定 & 0.00 & 1.00 & $+1.00$ & 0.54 & 3.56 & $+3.02$ \\
+    $\Delta T_{\mathrm{branch}}$ & 計画の設定 & 0.00 & 0.00 & 0.00 & $-0.09$ & 2.99 & $+3.08$ \\
+    \midrule
+    $\Delta T_{\mathrm{path}}-\Delta T_{\mathrm{branch}}+\Delta T_{\mathrm{track}}$ & 経路・追従 & 0.43 & 0.66 & $+0.23$ & 0.87 & 1.01 & $+0.14$ \\
+    $\Delta T_{\mathrm{stop}}$ & 停止 & 11.77 & 11.74 & $-0.03$ & 0.24 & 0.19 & $-0.05$ \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{区分の「計画の設定」は，速度計画の設定値を変えると変わる分である．青の$\Delta T_{\mathrm{branch}}$の4.0\,m/sの値は，定義による0の近くの値である．}
+\end{table}
+
+赤は各条件1本であり，赤の経路生成と速度の追従に由来する分の増加（$+0.23$\,s）は，周ごとの幅より小さい．この分は，完全な周ごとにR40で0.41，0.43\,s，R50で0.67，0.47\,s，R60で2.32，0.66，1.15\,s（1周目は静止発進を含む）である．青の2本では，2周目の値が上限速度4.0，5.0，6.0\,m/sで1.2と0.5\,s，1.3と1.3\,s，0.5と1.5\,sであり，同じ条件の2本の差（0〜1.0\,s）の範囲にある．赤の$\Delta T_{\mathrm{stop}}$は，2周目で11.8，9.8，11.7\,sであるが，周ごとの幅がR40で0.6\,s，R50で0.5\,s，R60で2.0\,sあり，上限速度の段階間の差（2.0，2.0\,s）と同程度であるため，上限速度との関係は言えない．$\Delta T_{\mathrm{stop}}$の大半は信号の表示時間（静止の時間）であり，その内訳は\ref{sec:stop_real}節に示す．
+
+$\Delta T_{\mathrm{track}}$は，上限速度4.0\,m/sで$+0.1$〜$+0.4$\,sと小さいが，5.0，6.0\,m/sでは負になる（赤で$-0.7$，$-1.7$\,s，青で$-0.4$，$-2.3$\,s）．負の値は，実測速度が制御器の参照した速度を上回ることを表し，減速しきれずにカーブへ入ることに当たる．Fig.~\ref{fig:ts_B60a}に，$v_{\mathrm{cap}}=6.0$\,m/sのB60aの2周目の速度列を示す．$v_{\mathrm{rec}}$は$s\approx53$\,mのカーブの手前で6\,m/sから3\,m/sへ階段状に下がり，$v_{\mathrm{meas}}$はその後10\,m以上かけて下がる．$v_{\mathrm{meas}}$が$v_{\mathrm{rec}}$を上回るのは，このカーブに入る手前の減速の区間である．この区間は，\ref{sec:ay_result}節で横加速度が速度計画の上限を超えた区間と重なる．横加速度が2.0\,m/s$^2$を超えた区間は，周の2〜20\,\%を占めるが，Table~\ref{tab:track_overlap}のとおり，5.0，6.0\,m/sの6本の$\Delta T_{\mathrm{track}}$のうち，$-0.2$〜$-1.7$\,sがこの区間の値である．R60では，この区間の値（$-1.7$\,s）が全体（$-1.7$\,s）に等しく，それ以外の区間は$0.0$\,sである．B60aは全体$-2.0$\,sのうち$-1.7$\,s，B60bは$-2.6$\,sのうち$-1.5$\,sがこの区間にある．$\Delta T_{\mathrm{path}}$と$\Delta T_{\mathrm{track}}$は，\ref{sec:decomposition}節のとおり和で読む．
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{images/field_ts_B60a.png}
+  \caption[Velocity profiles of B60a in the second lap.]{Velocity profiles used in the breakdown versus the distance in the second lap of B60a ($v_{\mathrm{cap}}=6.0$\,m/s): the confirmed performance $v_{\mathrm{phys}}$, the planned $v_{\mathrm{plan}}$, the speed referenced by the controller $v_{\mathrm{rec}}$, and the measured $v_{\mathrm{meas}}$. The segments of $v_{\mathrm{rec}}$ held at 4.0\,m/s are the branch speed limit.}
+  \label{fig:ts_B60a}
+\end{figure}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{$\Delta T_{\mathrm{track}}$ inside and outside the sections where the lateral acceleration exceeds 2.0\,m/s$^2$ (second lap).}
+  \label{tab:track_overlap}
   \small
   \begin{lrbox}{\tblbox}\begin{tabular}{lrrrr}
     \toprule
-    & \multicolumn{2}{c}{R1（赤）} & \multicolumn{2}{c}{B1（青）} \\
-    項目 & 合計 & 1周あたり & 合計 & 1周あたり \\
+    走行 & \shortstack[r]{$\Delta T_{\mathrm{track}}$\\全体 {[s]}} & \shortstack[r]{超過区間\\{[s]}} & \shortstack[r]{それ以外\\{[s]}} & \shortstack[r]{超過区間が\\周に占める\\割合 {[\%]}} \\
     \midrule
-    解析した周回 & 3.00 & & 2.97 & \\
-    走行距離 [m] & 780.0 & & 767.1 & \\
-    $T_{\mathrm{lap}}$ & 219.0 & 73.0 & 178.7 & 60.1 \\
-    $T_{\mathrm{phys}}$ & 130.6 & 43.5 & 128.8 & 43.3 \\
-    $\Delta T_{\mathrm{cap}}$ & $+64.8$ & $+21.6$ & $+42.3$ & $+14.2$ \\
-    $\Delta T_{\mathrm{plan}}$ & $+0.1$ & $+0.0$ & $+0.8$ & $+0.3$ \\
-    $\Delta T_{\mathrm{path}}$ & $-0.3$ & $-0.1$ & $+5.9$ & $+2.0$ \\
-    $\Delta T_{\mathrm{track}}$ & $+1.7$ & $+0.6$ & $+1.0$ & $+0.3$ \\
-    $\Delta T_{\mathrm{stop}}$ & $+22.2$ & $+7.4$ & $0.0$ & $0.0$ \\
+    R50 & $-0.7$ & $-0.4$ & $-0.3$ & 2 \\
+    R60 & $-1.7$ & $-1.7$ & 0.0 & 19 \\
+    B40a & $+0.3$ & $-0.2$ & $+0.6$ & 1 \\
+    B40b & $+0.1$ & $-0.2$ & $+0.3$ & 1 \\
+    B50a & $-0.3$ & $-0.2$ & $-0.1$ & 2 \\
+    B50b & $-0.4$ & $-0.4$ & 0.0 & 3 \\
+    B60a & $-2.0$ & $-1.7$ & $-0.3$ & 20 \\
+    B60b & $-2.6$ & $-1.5$ & $-1.1$ & 12 \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{各項の和は\eqnref{eq:decomp}により$T_{\mathrm{lap}}$に一致する（残差は構成上0であり示さない）．表示は丸めているため，和が0.1\,s程度ずれることがある．B1の周回は3周目が部分周（周長の97.5\,\%）である．}
+  \tblnote{超過区間は，横加速度$v^2|\kappa|$（\ref{sec:decomposition}節）が2.0\,m/s$^2$を超える区間である．R40は超過区間がなく，$\Delta T_{\mathrm{track}}$は$+0.4$\,sである．}
 \end{table}
 
-\begin{figure}[H]
+内訳の定義と確認性能の値に対する感度をTable~\ref{tab:decomp_sens}に示す．速度の参照点を変えると，$\Delta T_{\mathrm{path}}$と$\Delta T_{\mathrm{track}}$のあいだで時間が移り，その大きさは，R1で4.2\,s，R60で0.3\,s，B1で5.5\,s，B60aで3.6\,s（解析範囲全体）である．確認した横加速度を4.8から3.4\,m/s$^2$にすると，$T_{\mathrm{phys}}$はR1とR60で変わらず，B1で$+1.8$\,s，B60aで$+2.0$\,s（解析範囲全体）変わる．この範囲（3.4〜6.0\,m/s$^2$）で，4.0から6.0\,m/sまでの差6.0〜6.8\,s（青）のうち，速度計画の設定値を変えると変わる分は，5.5\,s（3.4\,m/s$^2$），6.1\,s（4.8），6.3\,s（6.0）であり，実測に依存する項の増加は0.1\,sで変わらない．上限速度とともに$T_{\mathrm{phys}}$の周長の分が増えることは，各コースで共通の軌跡の上でなく，走行ごとの軌跡の上で計算したことによる．
+
+\begin{table}[!htbp]
   \centering
-  \includegraphics[width=0.98\textwidth]{images/decomp_perlap.png}
-  \caption[Breakdown of the lap time per lap in the real runs.]{Breakdown of the lap time: (a) mean per lap for R1 and B1, (b) each lap (the third lap of B1 is partial). Numbers above the bars are the lap times.}
-  \label{fig:decomp}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.98\textwidth]{images/decomp_timeseries_R1.png}
-  \caption[Measured velocity and the velocity profiles of the breakdown for R1.]{Measured velocity ($v_{\mathrm{meas}}$) and the velocity profiles used in the breakdown versus traveled distance for R1. Shaded areas are the stop windows.}
-  \label{fig:decomp_ts}
-\end{figure}
-
-R1では，$T_{\mathrm{lap}}$のうち，物理限界だけで決まる$T_{\mathrm{phys}}$が59.6\,\%，上限速度の設定値による$\Delta T_{\mathrm{cap}}$が29.6\,\%，信号停止による$\Delta T_{\mathrm{stop}}$が10.1\,\%を占める．$\Delta T_{\mathrm{track}}$は0.8\,\%で，$\Delta T_{\mathrm{plan}}$と$\Delta T_{\mathrm{path}}$は合わせて$-0.2$\,sとほぼ0である．上限速度の設定値で走ったときの横加速度の最大値$v_{\mathrm{cap}}^2|\kappa|$は1.4\,m/s$^2$であり，速度計画の横加速度の上限$a_{y,\max}$を超えないため，曲率による速度の制約は働いていない．実際，物理限界の横加速度や減速の上限を変えても，R1の$T_{\mathrm{phys}}$は変わらない（Table~\ref{tab:decomp_sens}）．また，R1には曲率による速度の上限が走行可能な最高速度を下回る区間がなく，$T_{\mathrm{phys}}$は走行距離を最高速度で割った値にほぼ等しい．$T_{\mathrm{lap}}$と，上限速度の設定値で決まる$T_{\mathrm{ref}}=T_{\mathrm{phys}}+\Delta T_{\mathrm{cap}}$の差のほとんどは，信号停止による．$\Delta T_{\mathrm{stop}}$は停止ごとに4〜12\,sと異なり（Fig.~\ref{fig:decomp}(b)），保持時間（\ref{sec:run4}節）の違いに対応して，主に信号の表示時間による．
-
-B1では，$T_{\mathrm{phys}}$が72.1\,\%，$\Delta T_{\mathrm{cap}}$が23.6\,\%を占める．$\Delta T_{\mathrm{plan}}$と$\Delta T_{\mathrm{path}}$は合わせて約$+6.7$\,s（$T_{\mathrm{lap}}$の3.7\,\%）であり，$\Delta T_{\mathrm{track}}$は0.6\,\%である．上限速度の設定値で走ったときの横加速度の最大値は，交差点のカーブで4.1\,m/s$^2$となって$a_{y,\max}$を超えるため，$\Delta T_{\mathrm{plan}}$が正になる．$\Delta T_{\mathrm{path}}$のうち，分岐での速度抑制（\ref{sec:field_cond}節）に帰属する分を次のように求めた．経路選択の指示が直進以外の区間で，記録された計画速度が抑制値に$\pm 0.05$\,m/s以内で一致した距離は約70\,\%であり，その時間差は約$+3.3$\,sであった．これは$\Delta T_{\mathrm{path}}$の56\,\%，$T_{\mathrm{lap}}$の1.8\,\%に当たる．残りの区間では，計画速度は曲率や加減速で抑制値を下回るか，指示の切替直後の過渡などで抑制値を上回る．指示が直進のときに計画速度が抑制値に一致した距離はほぼ0である．この分は計算上は$\Delta T_{\mathrm{path}}$に入るが，速度計画の機能による時間差であり，$\Delta T_{\mathrm{plan}}$に移すと$\Delta T_{\mathrm{plan}}$は約$+4.1$\,s，$\Delta T_{\mathrm{path}}$は約$+2.6$\,sになる．
-
-Table~\ref{tab:decomp_seg}に，直線とカーブに分けた集計を示す．信号停止による時間差はすべて直線で生じ，B1の$\Delta T_{\mathrm{path}}$は主にカーブ（分岐）で生じている．
-
-\begin{table}[H]
-  \centering
-  \caption{Breakdown by straight and curved segments ($|\kappa|>0.04$\,1/m), in seconds.}
-  \label{tab:decomp_seg}
-  \small
-  \begin{lrbox}{\tblbox}\begin{tabular}{lrrrrrr}
-    \toprule
-    走行 & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\直線} & \shortstack[r]{$\Delta T_{\mathrm{path}}$\\カーブ} & \shortstack[r]{$\Delta T_{\mathrm{track}}$\\直線} & \shortstack[r]{$\Delta T_{\mathrm{track}}$\\カーブ} & \shortstack[r]{$\Delta T_{\mathrm{stop}}$\\直線} & \shortstack[r]{$\Delta T_{\mathrm{stop}}$\\カーブ} \\
-    \midrule
-    R1 & $-0.3$ & $0.0$ & $+1.2$ & $+0.5$ & $+22.2$ & $0.0$ \\
-    B1 & $+1.7$ & $+4.2$ & $-0.2$ & $+1.2$ & $0.0$ & $0.0$ \\
-    \bottomrule
-  \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{直線とカーブの距離は，R1で491.3\,m（63.0\,\%）と288.7\,m（37.0\,\%），B1で425.4\,m（55.5\,\%）と341.7\,m（44.5\,\%）である．}
-\end{table}
-
-内訳の定義と物理限界の値に対する感度をTable~\ref{tab:decomp_sens}に示す．速度の参照点と曲率の平滑幅を変えると，隣り合う項のあいだで時間が移るが，和は変わらない．影響が最も大きいのは参照点であり，$\Delta T_{\mathrm{path}}$と$\Delta T_{\mathrm{track}}$のあいだで4〜5.5\,sが移る．停止窓の終端の判定を変えたときの$\Delta T_{\mathrm{stop}}$の変化は0.2\,s未満である．車輪半径を車両の設定値0.124\,mとして換算すると，車輪速が約2\,\%小さく出る．このとき$\Delta T_{\mathrm{track}}$は1周あたり約1.2\,s増える．$T_{\mathrm{phys}}$と$\Delta T_{\mathrm{cap}}$の配分は走行可能な最高速度の値に依存し，最高速度を0.5\,m/s変えると，1周あたり約3.5\,sが両項のあいだで移る（$T_{\mathrm{ref}}$はほとんど変わらない）．横加速度，減速，加速の上限を変えたときの$T_{\mathrm{phys}}$の変化は，合計で1.4\,s以下と小さい．加速の上限が効くのは，発進と信号停止からの再発進の区間だけである．
-
-\begin{table}[H]
-  \centering
-  \caption[Sensitivity of the lap time breakdown.]{Sensitivity of the lap time breakdown to its definition and to the physical limits (in seconds; totals over the analyzed laps unless noted).}
+  \caption[Sensitivity of the lap time breakdown.]{Sensitivity of the lap time breakdown to its definition and to the confirmed performance (in seconds; totals over the analyzed laps unless noted).}
   \label{tab:decomp_sens}
-  \small
-  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{L{5.6cm}lll}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{L{3.2cm}L{1.9cm}rrrr}
     \toprule
-    変更した設定（既定値） & 項 & R1 & B1 \\
+    変更した設定（既定値） & 項 & R1 & B1 & R60 & B60a \\
     \midrule
-    速度の参照点：0.3\,s先$\to$最近点 & $\Delta T_{\mathrm{path}}$ & $-0.35\to+3.88$ & $+5.88\to+11.33$ \\
-    & $\Delta T_{\mathrm{track}}$ & $+1.70\to-2.52$ & $+1.02\to-4.43$ \\
-    曲率の平滑幅：0$\to$2\,m（1.0\,m） & $\Delta T_{\mathrm{plan}}$ & 変化なし & $+1.36\to+0.36$ \\
-    & $\Delta T_{\mathrm{path}}$ & 変化なし & $+5.29\to+6.29$ \\
-    停止窓の終端：計画速度の90〜96\,\%（95\,\%） & $\Delta T_{\mathrm{stop}}$ & $-0.16$〜$+0.01$ & --- \\
-    走行可能な最高速度：5.5／6.0／6.5\,m/s & $T_{\mathrm{phys}}$（1周あたり） & 47.4／43.5／40.2 & 47.1／43.3／40.1 \\
-    横加速度の上限：6.0$\to$4.0\,m/s$^2$ & $T_{\mathrm{phys}}$ & 変化なし & $+1.39$ \\
-    減速の上限：3.0〜5.0\,m/s$^2$ & $T_{\mathrm{phys}}$ & 変化なし & 変化なし \\
-    加速の上限：3.0〜5.0\,m/s$^2$ & $T_{\mathrm{phys}}$ & 約0.3 & 約0.4 \\
+    速度の参照点：0.3\,s先$\to$最近点 & $\Delta T_{\mathrm{path}}$ & $-0.3$$\to$$+3.9$ & $+5.9$$\to$$+11.3$ & $+8.6$$\to$$+8.9$ & $+16.4$$\to$$+20.0$ \\
+     & $\Delta T_{\mathrm{track}}$ & $+1.7$$\to$$-2.5$ & $+1.0$$\to$$-4.4$ & $-4.4$$\to$$-4.8$ & $-5.2$$\to$$-8.8$ \\
+    曲率の平滑幅：0$\to$2\,m（1.0\,m） & $\Delta T_{\mathrm{plan}}$ & 変化なし & $+1.4$$\to$$+0.4$ & $+5.9$$\to$$+2.3$ & $+13.5$$\to$$+9.4$ \\
+     & $\Delta T_{\mathrm{path}}$ & 変化なし & $+5.3$$\to$$+6.3$ & $+6.1$$\to$$+9.7$ & $+13.4$$\to$$+18.1$ \\
+    停止窓の終端：計画速度の90〜96\,\%（95\,\%） & $\Delta T_{\mathrm{stop}}$の差 & $-0.16$〜$+0.01$ & --- & 変化なし & --- \\
+    確認した最高速度：5.5／6.0／6.5\,m/s & $T_{\mathrm{phys}}$（1周） & 47.4/43.5/40.2 & 47.2/43.5/40.4 & 48.1/44.1/40.7 & 47.6/43.8/40.8 \\
+    確認した横加速度：4.8$\to$3.4／6.0\,m/s$^2$（4.8） & $T_{\mathrm{phys}}$ & 変化なし & $+1.8$／$-0.6$ & 変化なし & $+2.0$／$-0.6$ \\
+    確認した減速の上限：3.0〜5.0\,m/s$^2$ & $T_{\mathrm{phys}}$ & 変化なし & 変化なし & 変化なし & 変化なし \\
+    確認した加速の上限：3.0〜5.0\,m/s$^2$ & $T_{\mathrm{phys}}$の幅 & 約0.3 & 約0.4 & 約0.4 & 約0.4 \\
     \bottomrule
   \end{tabular}\end{lrbox}\usebox{\tblbox}
-  \tblnote{参照点と平滑幅の変更では隣り合う2項の和は変わらない．停止窓の終端は既定の判定との差，加速の上限は変化の幅である．最高速度を変えると$\Delta T_{\mathrm{cap}}$が逆向きに同じだけ変わる．}
+  \tblnote{参照点と平滑幅の変更では隣り合う2項の和は変わらない．停止窓の終端は基準との差，加速の上限は変化の幅である．最高速度と横加速度を変えると$\Delta T_{\mathrm{cap}}$が逆向きに同じだけ変わる．R1とB1は設定の異なる以前の走行である．}
 \end{table}
 
-以上より，R1とB1の上限速度の設定値の段階では，短縮の余地の大部分は上限速度の設定値にある．速度計画の設定と経路生成に由来する時間差は，R1ではほぼ0，B1では1周あたり約2.2\,sであり，B1のその約半分は分岐での速度抑制による．
+R1とR40は，同じ赤コース，上限速度4.0\,m/sで，経路追従制御（Pure Pursuit法とMPC）と$a_{y,\max}$（3.0と2.0\,m/s$^2$）が異なる．2周目のラップタイムは77.3\,sと77.4\,sで，内訳も$T_{\mathrm{phys}}$が43.3\,sと43.5\,s，$\Delta T_{\mathrm{cap}}$が21.7\,sと21.7\,s，$\Delta T_{\mathrm{path}}$が0.0\,sと0.1\,s，$\Delta T_{\mathrm{track}}$が0.5\,sと0.4\,s，$\Delta T_{\mathrm{stop}}$が11.9\,sと11.8\,sと近い．信号停止の時間を除いたラップタイムは，完全な周ごとにR1で65.4〜65.9\,s，R40で65.6〜66.4\,s（周ごとの幅0.5\,sと0.7\,s）であり，2本の差は周ごとの幅と同程度である．いずれも1本ずつの走行であり，上限速度4.0\,m/sでは，追従制御と$a_{y,\max}$の違いはラップタイムと内訳の差として現れなかった．
+
+\section{周回走行の横加速度}
+\label{sec:ay_result}
+周回走行の横加速度は，車輪速（車輪半径0.1265\,mで換算）と慣性航法装置のヨーレート$r$の積$vr$の0.5\,s移動平均で表す．$vr$の大きさが速度計画の上限2.0\,m/s$^2$を超えて続いた区間の数と時間をTable~\ref{tab:ay}に，2周目の$vr$をFig.~\ref{fig:ay_vs_s}に示す．
+
+\begin{table}[!htbp]
+  \centering
+  \caption[Lateral acceleration exceeding the upper limit of the speed planning.]{Lateral acceleration exceeding 2.0\,m/s$^2$ ($vr$, 0.5\,s mean) over the analyzed laps.}
+  \label{tab:ay}
+  \small
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{4pt}\begin{tabular}{lrrrrrr}
+    \toprule
+    走行 & \shortstack[r]{$v_{\mathrm{cap}}$\\{[m/s]}} & \shortstack[r]{超えた区間\\{[回]}} & \shortstack[r]{合計時間\\{[s]}} & \shortstack[r]{最長の区間\\{[s]}} & \shortstack[r]{最大\\{[m/s$^2$]}} & \shortstack[r]{$a_{\mathrm{lim}}$付近の\\割合 {[\%]}} \\
+    \midrule
+    R40 & 4.0 & 0 & --- & --- & 1.47 & --- \\
+    R50 & 5.0 & 10 & 3.7 & 1.00 & 2.73 & 25 \\
+    R60 & 6.0 & 28 & 23.9 & 2.35 & 3.17 & 28 \\
+    B40a & 4.0 & 7 & 3.2 & 0.80 & 2.64 & 5 \\
+    B40b & 4.0 & 11 & 4.3 & 0.95 & 2.66 & 6 \\
+    B50a & 5.0 & 8 & 4.6 & 0.90 & 2.85 & 2 \\
+    B50b & 5.0 & 14 & 6.9 & 0.75 & 2.71 & 5 \\
+    B60a & 6.0 & 28 & 23.8 & 1.50 & 3.35 & 11 \\
+    B60b & 6.0 & 23 & 20.2 & 2.20 & 2.95 & 6 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{解析範囲全体（約3周）の値である．最大は，解析範囲全体の$vr$（0.5\,s平均）の最大の大きさである．$a_{\mathrm{lim}}$付近の割合は，超えた区間の時間のうち，制限後の目標舵角から求めた$a=v^2\tan|\delta_{\mathrm{cmd}}|/L$が2.8〜3.2\,m/s$^2$にあった時間の割合である．}
+\end{table}
+
+上限速度4.0\,m/sの赤では，$vr$は2.0\,m/s$^2$を超えず，最大は1.5\,m/s$^2$であった．5.0\,m/sでは8〜14回（合計3.7〜6.9\,s），6.0\,m/sでは23〜28回（合計20.2〜23.9\,s）超えた．青の4.0\,m/sでも7回と11回（3.2，4.3\,s）超えた．超えた走行の最大は2.6〜3.4\,m/s$^2$であり，3.0\,m/s$^2$を超えたのはR60（0.3\,s）とB60a（0.6\,s）だけである．最長の区間は2.35\,s（R60）であった．この最大値は，走行試験Aの定常旋回で確認した範囲（4.8\,m/s$^2$，Table~\ref{tab:phys}）の内側にある．
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{images/field_ay_vs_s.png}
+  \caption[Lateral acceleration versus position along the lap in the second lap.]{Lateral acceleration ($vr$, 0.5\,s mean; positive for left turns) versus the distance in the second lap of each run (left: red course, right: blue course; from top to bottom: upper speed limits of 4.0, 5.0, and 6.0\,m/s). The dashed lines are the upper limit of the speed planning (2.0\,m/s$^2$).}
+  \label{fig:ay_vs_s}
+\end{figure}
+
+舵角の制限の横加速度$a_{\mathrm{lim}}$は，記録した制限後の目標舵角と車輪速から$a=v^2\tan|\delta_{\mathrm{cmd}}|/L$を求めて確認した．走行全体で$a$が2.0\,m/s$^2$を超える点のうち，R50とR60では34\,\%と33\,\%が2.8〜3.2\,m/s$^2$に集中し，3.3〜3.7\,m/s$^2$の点は0\,\%と0.9\,\%である．目標舵角は$a_{\mathrm{lim}}=3.0$\,m/s$^2$に相当する値に集中しており，車体側の制限の設定と一致する．一方，$vr$が2.0\,m/s$^2$を超えた区間の時間のうち，目標舵角がこの値の近くにあった割合は，赤のR50，R60で25\,\%，28\,\%，青で2〜11\,\%である（Table~\ref{tab:ay}）．超えた区間の最大の$vr$（3.35\,m/s$^2$）は$a_{\mathrm{lim}}$の約1.1倍であり，超過の大部分は，目標舵角が制限に達する前の区間で生じた．
+
+超えた位置は，各コースの位置合わせに用いた周（赤はR40，青はB50bの2周目）の位置で表すと，赤の6.0\,m/sでは$s=10$〜30，80〜110，150〜185，220〜250\,mの4か所のカーブである．青では，どの走行でも$s=160$〜170\,m（右カーブ）で3〜6回（解析範囲全体）超え，4.0，5.0\,m/sでは分岐（$s=130$〜150\,m）と交差点（$s=190$\,m付近）がこれに続き，6.0\,m/sでは赤と同じ外周のカーブでも超える．B60aの最大3.35\,m/s$^2$は，右カーブ（$s=55.7$〜59.5\,m）の値であり，この区間では，経路生成の出力が前方約14\,mで横へ約3\,m曲がり，速度計画の参照速度が5.5から2.9\,m/sへ下がったが，実測速度は5.4\,m/sまでしか下がらず，$vr$が$-3.2$\,m/s$^2$に達した．Fig.~\ref{fig:speed_vs_s}のB60aで$s\approx69$\,mに速度が3.2\,m/sまで落ちるのは，同じカーブの出口側である．B50bが$s\approx112$\,mで2.5\,m/sまで落ちるのは，$s=107$〜113\,mのカーブで参照速度が3.9から3.2\,m/sに下がった区間であり，停止点の発行はない．
+
+参照経路に対する横偏差を，Table~\ref{tab:latdev}に示す．横偏差は，平滑化後の経路（局所経路計画の入力）の，自車位置での横位置の絶対値であり，経路に対する量である．その95パーセント点は，赤で0.56，0.88，1.15\,m，青で0.29〜0.65，0.32〜1.03，0.94〜1.12\,m（上限速度4.0，5.0，6.0\,m/s）であり，R1とB1の0.26\,m，0.37\,mより大きく，上限速度とともに大きくなる傾向がある．最大は0.76〜1.75\,mである．青の同じ条件の2本の差が大きく（5.0\,m/sで0.32\,mと1.03\,m），GNSS軌跡の周回間のずれ（95パーセント点）も，赤で0.26，0.25，0.87\,m，青で0.33〜0.45，0.35〜0.94，0.56〜0.76\,mと，同じ走行で大きい．コースの車線中心に対する偏差は，GNSS軌跡と地図の車線中心の差（95パーセント点で1.5〜2.1\,m）がこれらより大きく，この大きさ以下の偏差を分離できないため，本論文では示さない．
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Lateral deviation of the vehicle from the smoothed path, and the lap-to-lap spread of the GNSS trajectory.}
+  \label{tab:latdev}
+  \small
+  \begin{lrbox}{\tblbox}\begin{tabular}{lrrrrr}
+    \toprule
+    走行 & \shortstack[r]{$v_{\mathrm{cap}}$\\{[m/s]}} & \shortstack[r]{横偏差の\\中央値 {[m]}} & \shortstack[r]{95パーセ\\ント点 {[m]}} & \shortstack[r]{最大\\{[m]}} & \shortstack[r]{GNSS周回間の\\ずれの95\\パーセント点 {[m]}} \\
+    \midrule
+    R40 & 4.0 & 0.11 & 0.56 & 0.94 & 0.26 \\
+    R50 & 5.0 & 0.10 & 0.88 & 1.45 & 0.25 \\
+    R60 & 6.0 & 0.15 & 1.15 & 1.51 & 0.87 \\
+    B40a & 4.0 & 0.09 & 0.29 & 0.76 & 0.33 \\
+    B40b & 4.0 & 0.09 & 0.65 & 1.75 & 0.45 \\
+    B50a & 5.0 & 0.07 & 0.32 & 0.79 & 0.35 \\
+    B50b & 5.0 & 0.12 & 1.03 & 1.44 & 0.94 \\
+    B60a & 6.0 & 0.10 & 0.94 & 1.43 & 0.56 \\
+    B60b & 6.0 & 0.11 & 1.12 & 1.51 & 0.76 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{横偏差は，平滑化後の経路の自車位置での横位置の絶対値であり，解析範囲全体の値である．GNSS周回間のずれは，周回ごとの軌跡を同じ位置で比べた距離である．}
+\end{table}
+
+\section{赤コースの信号停止}
+\label{sec:stop_real}
+上限速度を変えた赤の3本（R40，R50，R60）の各3周で，信号停止は9回すべて停止した（車輪速が0.5\,m/s未満になった）．停止した位置は，停止点に対して，R40で0.2〜0.4\,m越え，R50とR60で0.2〜0.3\,m手前であった（真の停止線に対する値ではない）．停止による時間差$\Delta T_{\mathrm{stop}}$は9.8〜11.9\,sである．停止の窓を，減速，低速接近，静止，再発進の4局面に分け（\ref{sec:decomposition}節），Table~\ref{tab:stop_phase}に局面ごとの時間を示す．静止は車輪速の読みが0の間であり，その時間は信号の表示時間で決まる入力である．記録から言えるのは，車輪速が停止してから緑のパネルが最初に検出されるまでの時間が，9回で5.6〜6.9\,sであったことである．% TODO-AUTHOR: 信号をどのように切り替えたか（操作者と方法。著者に確認中）
+静止の時間は6.3〜7.6\,sで，$\Delta T_{\mathrm{stop}}$の6割前後（R40 58\,\%，R50 67\,\%，R60 63\,\%）を占める．静止を除いた時間は，R40で4.9\,s，R50で3.3\,s，R60で4.2\,sであり，上限速度に対して単調に増えない．この時間を，減速と再加速だけを要する運動学の最小値$v/2\cdot(1/a_{\mathrm{stop}}+1/a_{x,\max})$（停止専用の減速度$a_{\mathrm{stop}}$と縦加速度の上限$a_{x,\max}$を用い，R40〜R60は3.0\,m/s$^2$，R1は$a_{\mathrm{stop}}=1.5$\,m/s$^2$）と比べると，R40で3.7倍，R50で2.0倍，R60で2.1倍である．
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Phases of the signal stop on the red course (mean of the stops; the range in parentheses).}
+  \label{tab:stop_phase}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{2.5pt}\begin{tabular}{L{2.9cm}rrrrrL{2.2cm}r}
+    \toprule
+    走行 & \shortstack[r]{減速\\{[s]}} & \shortstack[r]{低速接近\\{[s]}} & \shortstack[r]{静止\\{[s]}} & \shortstack[r]{再発進\\{[s]}} & \shortstack[r]{$\Delta T_{\mathrm{stop}}$\\{[s]}} & \shortstack[r]{$\Delta T_{\mathrm{stop}}$$-$静止\\{[s]}\\平均（範囲）} & \shortstack[r]{運動学の\\最小値 {[s]}} \\
+    \midrule
+    R1（縦のPIDなし） & 4.1〜5.8 & 0.1〜1.6 & 0.0〜9.0 & 1.6〜3.9 & 4.0〜11.9 & 3.9（2.8〜4.9） & 2.0 \\
+    R40（縦のPIDあり） & 4.5〜4.6 & 2.5〜3.8 & 6.3〜6.9 & 1.5〜3.8 & 11.1〜11.8 & 4.9（4.2〜5.5） & 1.3 \\
+    R50（縦のPIDあり） & 2.4〜3.5 & 0.9〜1.0 & 6.7〜6.8 & 1.9〜2.0 & 9.8〜10.3 & 3.3（3.1〜3.5） & 1.7 \\
+    R60（縦のPIDあり） & 4.0〜4.7 & 0.3〜1.4 & 6.8〜7.6 & 2.5〜2.6 & 11.0〜11.9 & 4.2（3.4〜4.8） & 2.0 \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{R1（Pure Pursuit法）は縦方向のPID制御を持たず，R40〜R60（MPC）は縦方向のPID制御を持つ．各局面は範囲（最小〜最大）で示す．R1の3回目の停止は，車輪速が0にならず，静止が0\,sである．}
+\end{table}
+
+低速接近は，R40で2.5〜3.8\,s，R50で0.9〜1.0\,s，R60で0.3〜1.4\,s，縦方向のPID制御を持たないR1で0.1〜1.6\,sである．縦方向のPID制御の積分項（上限$\pm 0.5$\,m/s$^2$）は，9回すべての停止で0.49〜0.50\,m/s$^2$に達した（付録のTable~\ref{tab:reset}）．積分項と速度の指令値は，速度計画の速度が0かつ車輪速の読みが0のとき，0にリセットされる（\eqnref{eq:pidreset}）．車輪速の読みは，片輪19\,rpm未満で0になり，両輪の平均では約0.13\,m/s刻みの値をとる．9回の停止すべてで，この条件が成り立ったフレームで積分項は，直前の0.13〜0.36\,m/s$^2$から0になった．リセットで低速接近が終わるのは，R40の3回であり，計画速度が0になるのが車輪速の読みが0になる時刻とほぼ同時（リセットは読みが0になった0.0〜0.2\,s後）である．R50とR60では，車輪速の読みが0になった0.6〜1.2\,s後に計画速度が0になり，そこでリセットされる．
+
+
+停止点の初回発行距離$d_0$は，上限速度4.0\,m/sで6.5〜6.8\,m（R1は6.98\,m），5.0\,m/sで4.3〜4.6\,m，6.0\,m/sで5.7〜7.4\,mであった．初回の発行から停止までの走行距離は，R40で13.8〜14.3\,m，R50で6.1〜9.1\,m，R60で11.9〜14.8\,mである．再発進は，緑のパネルの最初の検出から車輪速が0.5\,m/sを超えるまで0.76〜0.85\,s（R1は約0.7\,s）であった．R1とR40は，縦方向のPID制御の有無が異なり，静止を除いた時間は，R1で2.8〜4.9\,s（平均3.9\,s），R40で4.2〜5.5\,s（平均4.9\,s），低速接近はR1で0.1〜1.6\,s，R40で2.5〜3.8\,sである．
+
+\section{青コースの分岐}
+\label{sec:branch_real}
+青コースでは，1周に3回，経路選択の指示（左，右，左）が出る．1回目の左を分岐，2回目の右を右カーブ，3回目の左を交差点と呼ぶ．指示が出る時点の速度は，上限速度5.0，6.0\,m/sの分岐で4.8〜5.9\,m/sである．指示の発行から局所経路が分岐側へ切り替わるまでの時間（前方8\,mの横位置が1.0\,m以上寄るまで）は，分岐で2.1〜2.9\,s，右カーブで0.7〜1.2\,s，交差点で1.3〜2.0\,sである（B60bの分岐だけ1.0\,s．付録のTable~\ref{tab:branch_switch}）．
+
+Table~\ref{tab:branch}に，分岐カーブと交差点カーブの最低速度と横加速度，2周目の$\Delta T_{\mathrm{branch}}$と$\Delta T_{\mathrm{path}}$を示す．$\Delta T_{\mathrm{branch}}$は，上限速度5.0\,m/sで2.0，1.9\,s（B50a，B50b），6.0\,m/sで2.9，3.1\,s（B60a，B60b）であり，$\Delta T_{\mathrm{path}}$（3.6，3.6，5.4，7.2\,s）の43〜55\,\%に当たる．上限速度4.0\,m/sでは，抑制値が上限速度と等しく，$\Delta T_{\mathrm{branch}}$は$-0.2$〜0.0\,sで，定義による0の近くである．B1では，抑制値4.0\,m/sが上限速度4.5\,m/sより低いため，$\Delta T_{\mathrm{path}}$（2.2\,s）の一部が抑制による．
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Speed and lateral acceleration in the branch and intersection curves, and $\Delta T_{\mathrm{branch}}$ (blue course).}
+  \label{tab:branch}
+  \footnotesize
+  \begin{lrbox}{\tblbox}\setlength{\tabcolsep}{3pt}\begin{tabular}{lrrrrrrr}
+    \toprule
+    & & \multicolumn{2}{c}{分岐カーブ} & \multicolumn{2}{c}{交差点カーブ} & \multicolumn{2}{c}{2周目 [s]} \\
+    \cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+    走行 & \shortstack[r]{$v_{\mathrm{cap}}$\\{[m/s]}} & \shortstack[r]{最低速度\\{[m/s]}} & \shortstack[r]{$a_y$の最大\\{[m/s$^2$]}} & \shortstack[r]{最低速度\\{[m/s]}} & \shortstack[r]{$a_y$の最大\\{[m/s$^2$]}} & $\Delta T_{\mathrm{branch}}$ & $\Delta T_{\mathrm{path}}$ \\
+    \midrule
+    B40a & 4.0 & 2.6 & 2.1 & 2.3 & 2.0 & 0.0 & $+0.9$ \\
+    B40b & 4.0 & 2.7 & 2.3 & 3.1 & 2.4 & $-0.2$ & $+0.3$ \\
+    B50a & 5.0 & 2.6 & 2.3 & 2.6 & 1.9 & $+2.0$ & $+3.6$ \\
+    B50b & 5.0 & 2.4 & 1.9 & 2.3 & 2.0 & $+1.9$ & $+3.6$ \\
+    B60a & 6.0 & 2.5 & 2.3 & 2.9 & 2.3 & $+2.9$ & $+5.4$ \\
+    B60b & 6.0 & 2.0 & 1.8 & 2.5 & 1.9 & $+3.1$ & $+7.2$ \\
+    \bottomrule
+  \end{tabular}\end{lrbox}\usebox{\tblbox}
+  \tblnote{カーブは，位置合わせに用いた周の軌跡の$\pm 2$\,m（分岐は$s=137$〜143\,m，交差点は$s=189$〜194\,m）の区間であり，最低速度と$a_y$（$vr$の0.5\,s平均）の最大は3周の平均である．$\Delta T_{\mathrm{branch}}$と$\Delta T_{\mathrm{path}}$は2周目の値である．}
+\end{table}
+
+分岐カーブと交差点カーブの最低速度は，上限速度によらず，分岐カーブで2.0〜2.7\,m/s，交差点カーブで2.3〜3.1\,m/sであった．上限速度4.0，5.0，6.0\,m/sで，分岐カーブの最低速度は2.6〜2.7，2.4〜2.6，2.0〜2.5\,m/s，交差点カーブは2.3〜3.1，2.3〜2.6，2.5〜2.9\,m/sである．$a_y$の最大は，どちらのカーブも1.8〜2.4\,m/s$^2$であり，上限速度によらない．同じ区間の計画速度（先頭点）の最小値は左カーブで2.0〜2.6\,m/sであり，実測の最低速度（分岐カーブ2.0〜2.7\,m/s）とほぼ同じである．
 
 \section{考察}
 \label{sec:field_discussion}
-R1とB1は，コース，上限速度の設定値，経路追従制御，分岐での速度抑制の有無が異なる1本ずつの走行であり，走行間の差の原因や要素どうしの比較を実車の結果だけから述べることはできない．実車の結果が示すのは，これらの構成で，R1は3周，B1は解析範囲を介入なしで走行できたことと，各走行の内訳である．要素ごとの比較は\ref{chap:contribution}章の閉ループシミュレーションで行う．
+上限速度6.0\,m/s以下の範囲で，実車の結果は研究目的に対して次の3点を示す．
 
-車両応答は，舗装路での手動操縦の走行試験から同定した．並進のむだ時間は同定できず（Table~\ref{tab:ident}），操舵の応答は，直進でも右へ回る偏りを含めた当てはめであり，偏りの原因は特定していない．周回走行の閉ループのデータに当てはめた操舵のゲインは走行試験より約10\,\%大きく，周回走行の舵角の指令値は振幅が小さいため偏りうる（\ref{sec:ident_result}節）．また，経路生成の誤差は，R1とB1の周回走行から，コーンの連続検出の開始距離と停止はR1の3回の接近だけから求めており，同定に用いていない走行での検証は行っていない．
+第一に，$T_{\mathrm{lap}}-T_{\mathrm{phys}}$を決めているのは，速度計画の設定値を変えると変わる分である．上限速度6.0\,m/sの青では，$T_{\mathrm{lap}}-T_{\mathrm{phys}}$の7.7\,s（2周目，2本の平均）のうち，$\Delta T_{\mathrm{plan}}$の3.6\,sと$\Delta T_{\mathrm{branch}}$の3.0\,sで6.5\,s，経路生成と速度の追従に由来する分が1.0\,s，$\Delta T_{\mathrm{stop}}$が0.2\,sである．上限速度を4.0から6.0\,m/sに上げたときの短縮が$\Delta T_{\mathrm{cap}}$の減少より小さくなる量（赤1.4\,s，青6.6\,s）のうち，$\Delta T_{\mathrm{plan}}$と$\Delta T_{\mathrm{branch}}$が占める量は青で6.1\,sであり，この結論は確認した横加速度を3.4〜6.0\,m/s$^2$とした場合でも変わらない．
 
-$T_{\mathrm{phys}}$と$\Delta T_{\mathrm{cap}}$の配分は，走行可能な最高速度の値（試験で到達を確認した6.0\,m/s，Table~\ref{tab:phys}）に依存する．実際の最高速度がこれより高ければ，$T_{\mathrm{phys}}$が減り$\Delta T_{\mathrm{cap}}$が増える（Table~\ref{tab:decomp_sens}）．
+この設定値の働きは，2つに分けて言える．第一は横加速度の上限である．速度計画の上限は2.0\,m/s$^2$であるが，実測の横加速度は最大3.4\,m/s$^2$（上限の1.7倍）に達し，これは舵角の制限の横加速度3.0\,m/s$^2$の約1.1倍である．最大値が生じたのは，B60aで経路生成の出力が先で曲がった区間である（\ref{sec:ay_result}節）．確認した横加速度4.8\,m/s$^2$との間の余裕は，設定値から見える2.8\,m/s$^2$ではなく，1.4\,m/s$^2$である．すなわち，上限2.0\,m/s$^2$は，速度の追従の遅れによる超過に対する余裕として働いている．この超過は$\Delta T_{\mathrm{track}}$の負の値（赤$-1.7$\,s，青$-2.3$\,s）として現れ，その多くは横加速度が2.0\,m/s$^2$を超えた区間に入る．第二は分岐での速度抑制である．指示の発行から局所経路が分岐側へ切り替わるまでに2.1〜2.9\,sかかり（付録のTable~\ref{tab:branch_switch}），抑制値4.0\,m/sは，この経路の切替の遅れに対する余裕として働く．
+
+第二に，経路生成と速度の追従の寄与は，時間では小さく，横加速度の超過と横偏差として現れる．これらに由来する時間差の増加は，上限速度を4.0から6.0\,m/sに上げても赤で$+0.2$\,s，青で$+0.1$\,sであった．一方，上限速度5.0，6.0\,m/sでは，横加速度が速度計画の上限を超える区間が現れ，参照経路に対する横偏差の95パーセント点が赤で0.56から1.15\,m，青で最大1.12\,mに増える．経路生成の揺らぎも上限速度とともに増える（先端以外の行のラプラス尺度が赤0.048から0.067\,m，青0.060から0.075\,m）．
+
+第三に，信号停止の時間差$\Delta T_{\mathrm{stop}}$（9.8〜11.9\,s）の6割前後は信号の表示時間（静止）であり，静止を除いた3.3〜4.9\,sは，運動学の最小値（1.3〜2.0\,s）の2.0〜3.7倍である．R40では，縦方向のPID制御の積分項による低速接近（2.5〜3.8\,s）が含まれ，R50，R60の低速接近（0.3〜1.4\,s）より長い．
+
+これらのうち，設定値を変えたときの効果と，経路生成や追従の要素を置き換えたときの効果は，この9本の設定を再現した\ref{chap:contribution}章の閉ループシミュレーションで求める．

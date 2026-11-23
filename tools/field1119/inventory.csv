@@ -1,0 +1,10 @@
+run,label,course,run_id,vcap_nominal,t_auto_on,ta,t_auto_off,t_cut,t_cut_by,t_rec_end,analysis_s,dist_m,lap_len_m,laps,n_crossings,speedpath_vmax,speedpath_aymax,cmd_vel_max,v_meas_max,tracker,n_stop_events,n_stops_standstill,nav_events
+red_4,R-4,red,run_20261119_153226,4.0,13.93,14.16,245.87,245.87,autonomous=False,257.3,231.7,780.6,261.0,2.991,2,4.0,2.0,4.0,4.14,"MPC (diag: pid_mpc, steer_predicted)",5,3,0
+red_5,R-5,red,run_20261119_155430,5.0,9.78,10.01,199.96,199.96,autonomous=False,216.3,189.9,784.7,261.8,2.997,2,5.0,2.0,5.0,5.12,"MPC (diag: pid_mpc, steer_predicted)",4,3,0
+red_6,R-6,red,run_20261119_162033,6.0,8.83,9.03,194.55,183.93,brake onset (end stop),204.9,174.9,790.8,263.0,3.006,3,6.0,2.0,6.0,6.1,"MPC (diag: pid_mpc, steer_predicted)",6,3,0
+blue_4a,B-4a,blue,run_20261119_101239,4.0,10.04,10.28,,209.53,brake onset (end stop),218.7,199.3,775.2,258.7,2.997,2,4.0,2.0,4.0,4.11,"MPC (diag: pid_mpc, steer_predicted)",0,0,9
+blue_4b,B-4b,blue,run_20261119_111410,4.0,8.38,8.6,,206.79,brake onset (end stop),213.7,198.2,775.7,258.8,2.998,2,4.0,2.0,4.0,4.14,"MPC (diag: pid_mpc, steer_predicted)",3,0,9
+blue_5a,B-5a,blue,run_20261119_101641,5.0,8.39,8.6,,178.85,brake onset (end stop),200.6,170.3,774.7,258.7,2.994,2,5.0,2.0,5.0,5.13,"MPC (diag: pid_mpc, steer_predicted)",0,0,9
+blue_5b,B-5b,blue,run_20261119_110003,5.0,14.55,14.77,,188.18,brake onset (end stop),211.1,173.4,784.7,259.8,3.02,3,5.0,2.0,5.0,5.17,"MPC (diag: pid_mpc, steer_predicted)",0,0,9
+blue_6a,B-6a,blue,run_20261119_103819,6.0,8.49,8.7,162.37,162.37,autonomous=False,184.0,153.7,781.2,260.3,3.001,3,6.0,2.0,6.0,6.14,"MPC (diag: pid_mpc, steer_predicted)",0,0,9
+blue_6b,B-6b,blue,run_20261119_104444,6.0,48.87,49.09,204.57,204.43,brake onset (end stop),224.6,155.3,778.1,261.6,2.974,2,6.0,2.0,6.0,6.14,"MPC (diag: pid_mpc, steer_predicted)",3,0,9

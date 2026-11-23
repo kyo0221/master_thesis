@@ -1,0 +1,4 @@
+d_first_m,overshoot_m,travel_first_to_stop_m,t_decel_s,t_creep_s,t_hold_s,t_restart_s,window_s,t_lt0p2_s,dT_stop_s,ai_at_vref0,speed_lag_mean,run,n
+6.66,0.36,13.99,4.55,3.11,6.68,2.3,16.64,7.09,11.56,0.49,-0.32,red_4,3
+4.46,-0.25,7.93,3.07,0.94,6.75,1.93,12.7,7.21,10.07,0.26,-0.35,red_5,3
+6.31,-0.25,13.07,4.3,0.95,7.2,2.54,14.99,7.91,11.39,-0.24,-0.1,red_6,3

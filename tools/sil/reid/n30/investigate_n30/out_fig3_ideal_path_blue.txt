@@ -1,0 +1,69 @@
+maxe per run (all laps) and location
+base 1 max|e|=0.109 s=118.7 lap=0.47 e_signed=-0.109
+base 2 max|e|=0.109 s=156.0 lap=0.61 e_signed=-0.109
+base 3 max|e|=0.146 s=177.4 lap=1.70 e_signed=-0.146
+base 4 max|e|=0.108 s=117.1 lap=0.46 e_signed=+0.108
+base 5 max|e|=0.112 s=177.0 lap=1.69 e_signed=-0.112
+base 6 max|e|=0.089 s=149.8 lap=0.59 e_signed=+0.089
+base 7 max|e|=0.176 s=177.6 lap=0.70 e_signed=-0.176
+base 8 max|e|=0.155 s=249.5 lap=1.98 e_signed=-0.155
+base 9 max|e|=0.179 s=177.4 lap=0.70 e_signed=-0.179
+base 10 max|e|=0.141 s=177.8 lap=0.70 e_signed=-0.141
+base 11 max|e|=0.116 s=239.5 lap=0.94 e_signed=+0.116
+base 12 max|e|=0.130 s=177.4 lap=1.70 e_signed=-0.130
+base 13 max|e|=0.147 s=73.1 lap=1.29 e_signed=+0.147
+base 14 max|e|=0.120 s=86.9 lap=1.34 e_signed=-0.120
+base 15 max|e|=0.138 s=50.2 lap=1.20 e_signed=+0.138
+base 16 max|e|=0.133 s=116.3 lap=1.46 e_signed=-0.133
+base 17 max|e|=0.225 s=2.1 lap=1.01 e_signed=+0.225
+base 18 max|e|=0.219 s=177.2 lap=0.70 e_signed=-0.219
+base 19 max|e|=0.143 s=173.1 lap=1.68 e_signed=+0.143
+base 20 max|e|=0.104 s=253.4 lap=2.00 e_signed=-0.104
+base 21 max|e|=0.114 s=126.4 lap=0.50 e_signed=-0.114
+base 22 max|e|=0.115 s=80.5 lap=0.32 e_signed=-0.115
+base 23 max|e|=0.160 s=177.6 lap=1.70 e_signed=-0.160
+base 24 max|e|=0.131 s=189.2 lap=1.74 e_signed=-0.131
+base 25 max|e|=0.127 s=132.1 lap=0.52 e_signed=-0.127
+base 26 max|e|=0.097 s=159.9 lap=0.63 e_signed=+0.097
+base 27 max|e|=0.157 s=177.0 lap=1.70 e_signed=-0.157
+base 28 max|e|=0.168 s=177.0 lap=0.69 e_signed=-0.168
+base 29 max|e|=0.127 s=141.1 lap=0.55 e_signed=+0.127
+base 30 max|e|=0.121 s=93.3 lap=1.37 e_signed=-0.121
+base mean max|e| 0.137
+A8e 1 max|e|=0.192 s=132.1 lap=1.52 e_signed=-0.192
+A8e 2 max|e|=0.193 s=178.6 lap=0.70 e_signed=-0.193
+A8e 3 max|e|=0.282 s=132.4 lap=0.52 e_signed=-0.282
+A8e 4 max|e|=0.231 s=131.9 lap=1.52 e_signed=-0.231
+A8e 5 max|e|=0.167 s=178.6 lap=0.70 e_signed=-0.167
+A8e 6 max|e|=0.252 s=179.0 lap=1.70 e_signed=-0.252
+A8e 7 max|e|=0.266 s=179.0 lap=1.70 e_signed=-0.266
+A8e 8 max|e|=0.261 s=179.2 lap=1.70 e_signed=-0.261
+A8e 9 max|e|=0.241 s=179.2 lap=0.70 e_signed=-0.241
+A8e 10 max|e|=0.184 s=131.7 lap=1.52 e_signed=-0.184
+A8e 11 max|e|=0.254 s=179.2 lap=1.70 e_signed=-0.254
+A8e 12 max|e|=0.247 s=179.2 lap=1.71 e_signed=-0.247
+A8e 13 max|e|=0.264 s=179.0 lap=1.70 e_signed=-0.264
+A8e 14 max|e|=0.252 s=179.2 lap=1.70 e_signed=-0.252
+A8e 15 max|e|=0.152 s=178.0 lap=0.70 e_signed=-0.152
+A8e 16 max|e|=0.160 s=178.4 lap=1.70 e_signed=-0.160
+A8e 17 max|e|=0.260 s=179.2 lap=0.70 e_signed=-0.260
+A8e 18 max|e|=0.181 s=132.1 lap=0.52 e_signed=-0.181
+A8e 19 max|e|=0.155 s=178.0 lap=0.70 e_signed=-0.155
+A8e 20 max|e|=0.166 s=178.4 lap=0.70 e_signed=-0.166
+A8e 21 max|e|=0.277 s=132.1 lap=1.52 e_signed=-0.277
+A8e 22 max|e|=0.178 s=131.9 lap=0.52 e_signed=-0.178
+A8e 23 max|e|=0.162 s=178.6 lap=1.70 e_signed=-0.162
+A8e 24 max|e|=0.234 s=178.8 lap=1.70 e_signed=-0.234
+A8e 25 max|e|=0.268 s=179.2 lap=1.70 e_signed=-0.268
+A8e 26 max|e|=0.231 s=131.9 lap=1.52 e_signed=-0.231
+A8e 27 max|e|=0.178 s=131.9 lap=0.52 e_signed=-0.178
+A8e 28 max|e|=0.265 s=179.2 lap=0.70 e_signed=-0.265
+A8e 29 max|e|=0.198 s=178.6 lap=0.70 e_signed=-0.198
+A8e 30 max|e|=0.155 s=132.1 lap=0.52 e_signed=-0.155
+A8e mean max|e| 0.217
+base branch curve s116-134 n passes 60, mean of per-pass max|e| 0.073, share of passes with negative sign 0.88, mean s of max 126.7
+base junction curve s167-186 n passes 60, mean of per-pass max|e| 0.093, share of passes with negative sign 0.87, mean s of max 176.1
+base max|e| inside curves 0.219, outside curves 0.225
+A8e branch curve s116-134 n passes 60, mean of per-pass max|e| 0.175, share of passes with negative sign 1.00, mean s of max 132.2
+A8e junction curve s167-186 n passes 60, mean of per-pass max|e| 0.186, share of passes with negative sign 1.00, mean s of max 178.7
+A8e max|e| inside curves 0.282, outside curves 0.255

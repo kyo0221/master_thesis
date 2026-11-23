@@ -1,0 +1,193 @@
+condition_course_speed,"kind(lap=2周完走,lap3=3周完走,stop=停止)",n_collected,n_success,seed_min,seed_max,seeds_contiguous,source_runs
+A3_blue_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+A3_blue_v45,lap,5,5,1,5,ok,sweep:5
+A3_blue_v50,lap,5,5,1,5,ok,sweep:5
+A3_blue_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+A3_blue_v60,lap,30,30,1,30,ok,sweep:5 n30:25
+A3_blue_v65,lap,5,5,1,5,ok,sweep:5
+A3_blue_v70,lap,5,5,1,5,ok,reid3:5
+A3_blue_v75,lap,5,5,1,5,ok,sweep:5
+A3_blue_v80,lap,5,5,1,5,ok,sweep:5
+A3_blue_v85,lap,5,5,1,5,ok,sweep:5
+A3_blue_v90,lap,5,5,1,5,ok,sweep:5
+A3_red_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+A3_red_v45,lap,5,5,1,5,ok,sweep:5
+A3_red_v50,lap,5,5,1,5,ok,sweep:5
+A3_red_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+A3_red_v60,lap,30,30,1,30,ok,sweep:5 n30:25
+A3_red_v65,lap,5,5,1,5,ok,sweep:5
+A3_red_v70,lap,5,5,1,5,ok,reid3:5
+A3_red_v75,lap,5,5,1,5,ok,sweep:5
+A3_red_v80,lap,5,5,1,5,ok,sweep:5
+A3_red_v85,lap,5,5,1,5,ok,sweep:5
+A3_red_v90,lap,5,5,1,5,ok,sweep:5
+A45_blue_v40,lap,30,0,1,30,ok,reid3:5 n30:25
+A45_blue_v55,lap,30,0,1,30,ok,reid3:5 n30:25
+A45_blue_v60,lap,30,0,1,30,ok,n30:30
+A45_blue_v70,lap,5,0,1,5,ok,reid3:5
+A45_red_v40,lap,30,12,1,30,ok,reid3:5 n30:25
+A45_red_v55,lap,30,18,1,30,ok,reid3:5 n30:25
+A45_red_v60,lap,30,22,1,30,ok,n30:30
+A45_red_v70,lap,5,4,1,5,ok,reid3:5
+A4_blue_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+A4_blue_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+A4_blue_v60,lap,30,30,1,30,ok,n30:30
+A4_blue_v70,lap,5,5,1,5,ok,reid3:5
+A4_red_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+A4_red_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+A4_red_v60,lap,30,30,1,30,ok,n30:30
+A4_red_v70,lap,5,5,1,5,ok,reid3:5
+A5_blue_v40,lap,30,0,1,30,ok,reid3:5 n30:25
+A5_blue_v45,lap,5,0,1,5,ok,sweep:5
+A5_blue_v50,lap,5,0,1,5,ok,sweep:5
+A5_blue_v55,lap,30,0,1,30,ok,reid3:5 n30:25
+A5_blue_v60,lap,30,0,1,30,ok,sweep:5 n30:25
+A5_blue_v65,lap,5,0,1,5,ok,sweep:5
+A5_blue_v70,lap,5,0,1,5,ok,reid3:5
+A5_blue_v75,lap,5,0,1,5,ok,sweep:5
+A5_blue_v80,lap,5,0,1,5,ok,sweep:5
+A5_blue_v85,lap,5,0,1,5,ok,sweep:5
+A5_blue_v90,lap,5,0,1,5,ok,sweep:5
+A5_red_v40,lap,30,12,1,30,ok,reid3:5 n30:25
+A5_red_v45,lap,5,4,1,5,ok,sweep:5
+A5_red_v50,lap,5,4,1,5,ok,sweep:5
+A5_red_v55,lap,30,21,1,30,ok,reid3:5 n30:25
+A5_red_v60,lap,30,22,1,30,ok,sweep:5 n30:25
+A5_red_v65,lap,5,2,1,5,ok,sweep:5
+A5_red_v70,lap,5,3,1,5,ok,reid3:5
+A5_red_v75,lap,5,5,1,5,ok,sweep:5
+A5_red_v80,lap,5,5,1,5,ok,sweep:5
+A5_red_v85,lap,5,5,1,5,ok,sweep:5
+A5_red_v90,lap,5,4,1,5,ok,sweep:5
+A7_blue_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+A7_blue_v45,lap,5,5,1,5,ok,reid3:5
+A7_blue_v50,lap,5,5,1,5,ok,reid3:5
+A7_blue_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+A7_blue_v60,lap,30,30,1,30,ok,reid3:5 n30:25
+A7_blue_v65,lap,5,5,1,5,ok,reid3:5
+A7_blue_v70,lap,5,5,1,5,ok,reid3:5
+A7_blue_v75,lap,5,5,1,5,ok,reid3:5
+A7_blue_v80,lap,5,5,1,5,ok,reid3:5
+A7_blue_v85,lap,5,5,1,5,ok,reid3:5
+A7_blue_v90,lap,5,5,1,5,ok,reid3:5
+A8e_blue_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+A8e_blue_v45,lap,5,5,1,5,ok,sweep:5
+A8e_blue_v50,lap,5,5,1,5,ok,sweep:5
+A8e_blue_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+A8e_blue_v60,lap,30,30,1,30,ok,sweep:5 n30:25
+A8e_blue_v65,lap,5,5,1,5,ok,sweep:5
+A8e_blue_v70,lap,5,5,1,5,ok,reid3:5
+A8e_blue_v75,lap,5,5,1,5,ok,sweep:5
+A8e_blue_v80,lap,5,5,1,5,ok,sweep:5
+A8e_blue_v85,lap,5,5,1,5,ok,sweep:5
+A8e_blue_v90,lap,5,5,1,5,ok,sweep:5
+A8e_red_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+A8e_red_v45,lap,5,5,1,5,ok,sweep:5
+A8e_red_v50,lap,5,5,1,5,ok,sweep:5
+A8e_red_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+A8e_red_v60,lap,30,30,1,30,ok,sweep:5 n30:25
+A8e_red_v65,lap,5,5,1,5,ok,sweep:5
+A8e_red_v70,lap,5,5,1,5,ok,reid3:5
+A8e_red_v75,lap,5,5,1,5,ok,sweep:5
+A8e_red_v80,lap,5,5,1,5,ok,sweep:5
+A8e_red_v85,lap,5,5,1,5,ok,sweep:5
+A8e_red_v90,lap,5,5,1,5,ok,sweep:5
+B1_blue_v45,lap3,30,30,1,30,ok,reid3:5 n30:25
+H6A7_blue_v50,lap,5,5,1,5,ok,reid3:5
+H6A7_blue_v55,lap,5,5,1,5,ok,reid3:5
+H6A7_blue_v60,lap,5,5,1,5,ok,reid3:5
+H6A7_blue_v70,lap,5,5,1,5,ok,reid3:5
+H6_blue_v50,lap,5,5,1,5,ok,reid3:5
+H6_blue_v55,lap,5,5,1,5,ok,reid3:5
+H6_blue_v60,lap,5,5,1,5,ok,reid3:5
+H6_blue_v70,lap,5,5,1,5,ok,reid3:5
+H6_red_v50,lap,5,5,1,5,ok,reid3:5
+H6_red_v55,lap,5,5,1,5,ok,reid3:5
+H6_red_v60,lap,5,5,1,5,ok,reid3:5
+H6_red_v70,lap,5,5,1,5,ok,reid3:5
+R1mpc_b0_red_v40,lap3,30,25,1,30,ok,reid3:5 n30:25
+R1mpc_b1_red_v40,lap3,30,28,1,30,ok,reid3:5 n30:25
+R1pp_b0_red_v40,lap3,30,30,1,30,ok,reid3:5 n30:25
+R1pp_b1_red_v40,lap3,30,30,1,30,ok,reid3:5 n30:25
+X3E12_red_v40,lap,5,4,1,5,ok,reid3:5
+X3E12_red_v55,lap,5,3,1,5,ok,reid3:5
+X3E9_red_v40,lap,5,5,1,5,ok,reid3:5
+X3E9_red_v55,lap,5,5,1,5,ok,reid3:5
+X3FAR_red_v40,lap,5,0,1,5,ok,reid3:5
+X3FAR_red_v55,lap,5,0,1,5,ok,reid3:5
+X3M10_red_v40,lap,5,5,1,5,ok,reid3:5
+X3M10_red_v55,lap,5,5,1,5,ok,reid3:5
+base_blue_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+base_blue_v45,lap,5,5,1,5,ok,reid3:5
+base_blue_v50,lap,5,5,1,5,ok,reid3:5
+base_blue_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+base_blue_v60,lap,30,30,1,30,ok,reid3:5 n30:25
+base_blue_v65,lap,5,5,1,5,ok,reid3:5
+base_blue_v70,lap,5,5,1,5,ok,reid3:5
+base_blue_v75,lap,5,5,1,5,ok,reid3:5
+base_blue_v80,lap,5,5,1,5,ok,reid3:5
+base_blue_v85,lap,5,5,1,5,ok,reid3:5
+base_blue_v90,lap,5,5,1,5,ok,reid3:5
+base_red_v40,lap,30,30,1,30,ok,reid3:5 n30:25
+base_red_v45,lap,5,5,1,5,ok,sweep:5
+base_red_v50,lap,5,5,1,5,ok,reid3:5
+base_red_v55,lap,30,30,1,30,ok,reid3:5 n30:25
+base_red_v60,lap,30,30,1,30,ok,reid3:5 n30:25
+base_red_v65,lap,5,5,1,5,ok,sweep:5
+base_red_v70,lap,5,5,1,5,ok,reid3:5
+base_red_v75,lap,5,5,1,5,ok,sweep:5
+base_red_v80,lap,5,5,1,5,ok,sweep:5
+base_red_v85,lap,5,5,1,5,ok,sweep:5
+base_red_v90,lap,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v100,stop,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v40,stop,30,30,1,30,ok,reid3:5 n30:25
+stopA2_b0_red_v45,stop,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v50,stop,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v55,stop,30,30,1,30,ok,reid3:5 n30:25
+stopA2_b0_red_v60,stop,30,30,1,30,ok,sweep:5 n30:25
+stopA2_b0_red_v65,stop,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v70,stop,5,5,1,5,ok,reid3:5
+stopA2_b0_red_v75,stop,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v80,stop,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v85,stop,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v90,stop,5,5,1,5,ok,sweep:5
+stopA2_b0_red_v95,stop,5,5,1,5,ok,sweep:5
+stopA2_b1_red_v100,stop,5,4,1,5,ok,sweep:5
+stopA2_b1_red_v40,stop,30,30,1,30,ok,reid3:5 n30:25
+stopA2_b1_red_v45,stop,5,5,1,5,ok,sweep:5
+stopA2_b1_red_v50,stop,5,5,1,5,ok,sweep:5
+stopA2_b1_red_v55,stop,30,30,1,30,ok,reid3:5 n30:25
+stopA2_b1_red_v60,stop,30,30,1,30,ok,sweep:5 n30:25
+stopA2_b1_red_v65,stop,5,5,1,5,ok,sweep:5
+stopA2_b1_red_v70,stop,5,5,1,5,ok,reid3:5
+stopA2_b1_red_v75,stop,5,5,1,5,ok,sweep:5
+stopA2_b1_red_v80,stop,5,5,1,5,ok,sweep:5
+stopA2_b1_red_v85,stop,5,5,1,5,ok,sweep:5
+stopA2_b1_red_v90,stop,5,5,1,5,ok,sweep:5
+stopA2_b1_red_v95,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v100,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v40,stop,30,30,1,30,ok,reid3:5 n30:25
+stopbase_b0_red_v45,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v50,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v55,stop,30,30,1,30,ok,reid3:5 n30:25
+stopbase_b0_red_v60,stop,30,30,1,30,ok,sweep:5 n30:25
+stopbase_b0_red_v65,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v70,stop,5,5,1,5,ok,reid3:5
+stopbase_b0_red_v75,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v80,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v85,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v90,stop,5,5,1,5,ok,sweep:5
+stopbase_b0_red_v95,stop,5,5,1,5,ok,sweep:5
+stopbase_b1_red_v100,stop,5,4,1,5,ok,sweep:5
+stopbase_b1_red_v40,stop,30,30,1,30,ok,reid3:5 n30:25
+stopbase_b1_red_v45,stop,5,5,1,5,ok,sweep:5
+stopbase_b1_red_v50,stop,5,5,1,5,ok,sweep:5
+stopbase_b1_red_v55,stop,30,30,1,30,ok,reid3:5 n30:25
+stopbase_b1_red_v60,stop,30,30,1,30,ok,sweep:5 n30:25
+stopbase_b1_red_v65,stop,5,5,1,5,ok,sweep:5
+stopbase_b1_red_v70,stop,5,5,1,5,ok,reid3:5
+stopbase_b1_red_v75,stop,5,5,1,5,ok,sweep:5
+stopbase_b1_red_v80,stop,5,5,1,5,ok,sweep:5
+stopbase_b1_red_v85,stop,5,5,1,5,ok,sweep:5
+stopbase_b1_red_v90,stop,5,5,1,5,ok,sweep:5
+stopbase_b1_red_v95,stop,5,5,1,5,ok,sweep:5

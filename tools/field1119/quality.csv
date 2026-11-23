@@ -1,0 +1,10 @@
+run,gnss_gaps,gnss_gap_max_s,imu_gaps,imu_gap_max_s,chassis_gaps_gt0p06,chassis_gap_max_s,speed_path_gaps_gt0p5,speed_path_gap_max_s,local_path_gaps_gt0p5,local_path_gap_max_s,vision_path_gaps_gt0p4,vision_path_gap_max_s,gnss_jumps_gt1m,gnss_excess_max_m,imu_yaw_jumps_gt8deg,gnss_status_values,gnss_cov_all_zero,gap_times
+red_4,0,0.071,0,0.071,204,0.102,0,0.2,1,0.71,0,0.29,0,0.08,0,0,1,"{'gnss': [], 'chassis': [53.8, 53.9, 54.0, 54.1, 54.2, 54.3], 'local_path': [189.5], 'vision': []}"
+red_5,0,0.056,0,0.057,212,0.102,0,0.11,0,0.1,0,0.12,0,0.03,0,0,1,"{'gnss': [], 'chassis': [42.3, 42.4, 42.5, 42.6, 42.7, 42.8], 'local_path': [], 'vision': []}"
+red_6,0,0.057,0,0.057,235,0.103,0,0.11,0,0.11,0,0.1,0,0.06,0,0,1,"{'gnss': [], 'chassis': [9.1, 37.7, 37.8, 37.9, 38.0, 38.1], 'local_path': [], 'vision': []}"
+blue_4a,0,0.055,0,0.055,0,0.036,0,0.11,0,0.1,0,0.12,0,0.07,0,0,1,"{'gnss': [], 'chassis': [], 'local_path': [], 'vision': []}"
+blue_4b,0,0.058,0,0.058,0,0.039,0,0.11,0,0.1,0,0.13,0,0.04,0,0,1,"{'gnss': [], 'chassis': [], 'local_path': [], 'vision': []}"
+blue_5a,0,0.055,0,0.055,0,0.028,0,0.2,1,0.61,0,0.09,0,0.04,0,0,1,"{'gnss': [], 'chassis': [], 'local_path': [56.4], 'vision': []}"
+blue_5b,0,0.058,0,0.058,1,0.065,0,0.1,0,0.1,0,0.1,0,0.04,0,0,1,"{'gnss': [], 'chassis': [14.8], 'local_path': [], 'vision': []}"
+blue_6a,0,0.064,0,0.063,0,0.038,0,0.11,0,0.1,0,0.1,0,0.08,0,0,1,"{'gnss': [], 'chassis': [], 'local_path': [], 'vision': []}"
+blue_6b,0,0.062,0,0.062,0,0.021,0,0.11,0,0.11,0,0.14,0,0.08,0,0,1,"{'gnss': [], 'chassis': [], 'local_path': [], 'vision': []}"
